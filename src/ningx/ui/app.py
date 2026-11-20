@@ -25,6 +25,19 @@ def run_app(ctx: AppContext, *, focus: str | None = None) -> int:
 
     window = MainWindow(ctx, focus=focus)
     window.show()
+    screen = app.primaryScreen()
+    ctx.logger.info(
+        "ui.geometry",
+        extra={
+            "window": f"{window.width()}x{window.height()}",
+            "available": (
+                f"{screen.availableGeometry().width()}x{screen.availableGeometry().height()}"
+                if screen is not None
+                else "unknown"
+            ),
+            "dpr": screen.devicePixelRatio() if screen is not None else None,
+        },
+    )
     ctx.telemetry.start()
     ctx.logger.info("ui.started", extra={"focus": focus or "default"})
     try:

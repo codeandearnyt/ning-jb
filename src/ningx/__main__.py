@@ -42,15 +42,46 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _attach_parent_console() -> bool:
+    """Make a windowed build print to the console that started it.
+
+    A ``--windowed`` executable has no console of its own, so ``sys.stdout`` is
+    ``None``. When it is started from PowerShell or cmd, attaching to the parent
+    console lets ``--check`` and ``--version`` print where the user can see them.
+    Started from Explorer there is no parent console and nothing happens.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return True
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        if not ctypes.windll.kernel32.AttachConsole(-1):
+            return False
+        console = Path("CONOUT$")
+        sys.stdout = console.open("w", encoding="utf-8", buffering=1)
+        sys.stderr = console.open("w", encoding="utf-8", buffering=1)
+        return True
+    except OSError:
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    console_ready = sys.stdout is not None and sys.stderr is not None
+    if getattr(sys, "frozen", False) and (args.version or args.check):
+        console_ready = _attach_parent_console()
 
     if args.version:
         print(__version__)
         return 0
 
     paths = AppPaths.for_root(args.data_dir) if args.data_dir else AppPaths.default()
-    ctx = build_context(BuildOptions(paths=paths, console_log=not args.quiet))
+    ctx = build_context(
+        BuildOptions(paths=paths, console_log=not args.quiet and console_ready)
+    )
     try:
         if args.check:
             results = run_self_check(ctx)

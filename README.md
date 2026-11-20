@@ -124,6 +124,43 @@ Launch the UI:
 .\.venv\Scripts\python.exe -m ningx
 ```
 
+## Build the Windows executable
+
+The packaged app is a single windowed `.exe`. Double-clicking it opens the UI;
+there is no installer. PyInstaller's onefile bootloader unpacks the bundle into
+a temporary `%TEMP%\_MEIxxxx` folder while the app runs and removes it on exit;
+application data still lives only in the app data directory.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install pyinstaller
+powershell -ExecutionPolicy Bypass -File packaging\build_exe.ps1
+```
+
+The script renders `packaging\ningx.ico` from the same design the window icon
+uses, writes the version resource from `ningx.__version__`, then runs
+PyInstaller (`--onefile --windowed`). The artifact is
+`dist\NingX-Optimizer.exe` — about 87 MB, most of it Qt and the Gemini SDK. A
+build takes roughly five minutes.
+
+Verify the artifact from a console:
+
+```powershell
+.\dist\NingX-Optimizer.exe --version
+.\dist\NingX-Optimizer.exe --check --quiet
+```
+
+Both print to the console that launched them; started from Explorer, the
+windowed build opens the UI. `--check` runs the same 19 probes as the source
+tree, including that Credential Manager round-trips and that `google-genai`
+imports inside the bundle.
+
+The build is **unsigned**. Windows SmartScreen will warn on first run
+("Windows protected your PC" → *More info* → *Run anyway*) until a signed
+release exists. The exe is self-contained: the machine does not need Python,
+PySide6 or pywin32 installed.
+
+`dist\`, `build\` and `*.spec` are gitignored; only `packaging\` is tracked.
+
 ## Data locations
 
 - Application data: `%LOCALAPPDATA%\NingX` (database, logs, quarantine, backups)

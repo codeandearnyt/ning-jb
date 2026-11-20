@@ -129,7 +129,8 @@ def run_self_check(ctx: AppContext) -> list[CheckResult]:
             )
         )
     except Exception as exc:
-        results.append(CheckResult("secrets.round_trip", False, type(exc).__name__))
+        detail = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+        results.append(CheckResult("secrets.round_trip", False, detail))
 
     # --- audit ----------------------------------------------------------------
     try:
@@ -301,6 +302,41 @@ def _check_ai(ctx: AppContext) -> list[CheckResult]:
             f"{len(implemented)} implemented of {len(PROFILES)}: {', '.join(implemented)}",
         )
     )
+
+    try:
+        import importlib.util
+
+        from ningx.contracts.ai import ProviderConfig
+        from ningx.providers.gemini import GeminiProvider
+        from ningx.security.secret_store import InMemorySecretStore
+
+        adapter = GeminiProvider(
+            ProviderConfig(
+                provider_id="self-check",
+                name="Self-check",
+                kind="gemini",
+                model_id="gemini-2.5-flash",
+            ),
+            InMemorySecretStore(),
+        )
+        capabilities = adapter.capabilities
+        if importlib.util.find_spec("google.genai") is None:
+            detail = "adapter constructs; google-genai is not installed"
+        else:
+            # find_spec only proves a module is discoverable. Importing it is what
+            # a frozen build must be able to do when the user tests a connection.
+            from google import genai as _genai
+
+            sdk = getattr(_genai, "__version__", "unknown")
+            detail = (
+                f"adapter constructs; google-genai {sdk} imports; "
+                f"json_mode={capabilities.json_mode}"
+            )
+        results.append(CheckResult("ai.gemini_adapter", True, detail))
+    except Exception as exc:
+        results.append(
+            CheckResult("ai.gemini_adapter", False, f"{type(exc).__name__}: {exc}")
+        )
 
     try:
         stored = ctx.providers_repo.list_all()

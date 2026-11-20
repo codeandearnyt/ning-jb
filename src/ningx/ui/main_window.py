@@ -6,12 +6,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication, QScreen
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -238,8 +240,8 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
 
         self.setWindowTitle("NingX-Optimizer")
-        self.resize(1320, 840)
-        self.setMinimumSize(1060, 680)
+        self.setMinimumSize(980, 600)
+        self._fit_to_screen()
 
         central = QWidget()
         root = QHBoxLayout(central)
@@ -250,6 +252,27 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self._select(focus or "dashboard")
+
+    def _fit_to_screen(self) -> None:
+        """Open at the intended size, but never larger than the screen can show.
+
+        ``resize(1320, 840)`` is wider and taller than a 1366x768 panel's work
+        area, and on a scaled display Windows clamps the window below the
+        layout's minimum. Asking the screen first keeps the window whole and
+        leaves the scroll area to handle the rest.
+        """
+        screen: QScreen | None = QGuiApplication.primaryScreen()
+        if screen is None:
+            self.resize(1320, 840)
+            return
+        available = screen.availableGeometry()
+        width = max(980, min(1320, available.width() - 40))
+        height = max(600, min(840, available.height() - 40))
+        self.resize(width, height)
+        self.move(
+            available.x() + (available.width() - width) // 2,
+            available.y() + (available.height() - height) // 2,
+        )
 
     # ------------------------------------------------------------------ navigation
 
@@ -344,7 +367,18 @@ class MainWindow(QMainWindow):
 
         for spec in SCREENS:
             self._stack.addWidget(spec.factory(self._ctx))
-        layout.addWidget(self._stack, 1)
+
+        # A screen keeps its own minimum size. When the window is smaller than
+        # that (a short laptop panel or a high scaling factor), scrolling is
+        # better than clipping controls the user cannot reach.
+        screens = QScrollArea()
+        screens.setObjectName("ScreenScroll")
+        screens.setFrameShape(QFrame.Shape.NoFrame)
+        screens.setWidgetResizable(True)
+        screens.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        screens.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        screens.setWidget(self._stack)
+        layout.addWidget(screens, 1)
         return container
 
     # ------------------------------------------------------------------- selection
