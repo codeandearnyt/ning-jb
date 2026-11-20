@@ -25,6 +25,7 @@ from ningx.core.dry_run import DryRunExecutor
 from ningx.core.permission_manager import PermissionManager
 from ningx.core.policy_engine import PolicyEngine
 from ningx.observability.logging import configure_logging
+from ningx.providers.router import ProviderRegistry
 from ningx.security.path_validator import PathValidator
 from ningx.security.process_validator import ProcessProbe, ProcessValidator
 from ningx.security.protected_targets import default_protected_targets
@@ -39,6 +40,7 @@ from ningx.storage.db import Database
 from ningx.storage.repositories.actions import SqliteActionRepository
 from ningx.storage.repositories.audit import SqliteAuditSink
 from ningx.storage.repositories.findings import SqliteFindingRepository
+from ningx.storage.repositories.providers import SqliteProviderRepository
 from ningx.storage.repositories.settings import SqliteSettingsStore
 from ningx.storage.repositories.telemetry import SqliteTelemetryRepository
 from ningx.telemetry.engine import TelemetryEngine
@@ -151,6 +153,9 @@ def build_context(options: BuildOptions) -> AppContext:
         keep_scans=options.keep_scans,
     )
 
+    providers_repo = SqliteProviderRepository(db, clock=options.clock)
+    provider_registry = ProviderRegistry(secrets)
+
     return AppContext(
         paths=paths,
         db=db,
@@ -175,6 +180,8 @@ def build_context(options: BuildOptions) -> AppContext:
         startup_collector=startup_collector,
         junk_scanner=junk_scanner,
         scanner=scanner,
+        providers_repo=providers_repo,
+        provider_registry=provider_registry,
         clock=options.clock,
         logger=logger,
     )

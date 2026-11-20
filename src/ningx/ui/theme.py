@@ -169,9 +169,18 @@ QLabel#SectionLabel {
     font-weight: 600;
     letter-spacing: 1.1px;
 }
-QLabel#Hint {
+QLabel#Hint, QLabel#SaveStatus, QLabel#RoutingPlan {
     color: #5f6e7d;
     font-size: 11px;
+}
+QLabel#TestResult {
+    color: #8b98a5;
+    font-size: 12px;
+}
+QLabel#CredentialStatus {
+    color: #c8d3de;
+    font-family: "Cascadia Mono", "Consolas";
+    font-size: 12px;
 }
 QLabel#Verdict {
     font-size: 22px;
@@ -230,6 +239,11 @@ QLineEdit:focus {
 QLineEdit::placeholder {
     color: #5f6e7d;
 }
+QLineEdit:disabled {
+    background-color: #10161e;
+    border-color: #1c2530;
+    color: #5f6e7d;
+}
 
 QPlainTextEdit {
     background-color: #0b0f14;
@@ -251,6 +265,11 @@ QComboBox {
     min-height: 22px;
 }
 QComboBox:hover { border-color: #3f5670; }
+QComboBox:disabled {
+    background-color: #10161e;
+    border-color: #1c2530;
+    color: #5f6e7d;
+}
 QComboBox QAbstractItemView {
     background-color: #182230;
     border: 1px solid #33465a;
@@ -258,6 +277,41 @@ QComboBox QAbstractItemView {
     color: #e6edf3;
     outline: none;
 }
+
+QCheckBox {
+    color: #c8d3de;
+    font-size: 12px;
+    spacing: 8px;
+}
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #33465a;
+    border-radius: 3px;
+    background-color: #0b0f14;
+}
+QCheckBox::indicator:checked {
+    background-color: #2dd4bf;
+    border-color: #2dd4bf;
+}
+QCheckBox::indicator:disabled {
+    border-color: #24303d;
+    background-color: #131a23;
+}
+QCheckBox:disabled { color: #5f6e7d; }
+
+QSpinBox, QDoubleSpinBox {
+    background-color: #0b0f14;
+    border: 1px solid #24303d;
+    border-radius: 6px;
+    color: #e6edf3;
+    font-family: "Cascadia Mono", "Consolas";
+    font-size: 12px;
+    padding: 4px 8px;
+    min-height: 20px;
+}
+QSpinBox:focus, QDoubleSpinBox:focus { border-color: #33465a; }
+QSpinBox:disabled, QDoubleSpinBox:disabled { color: #5f6e7d; }
 
 QPushButton#Primary {
     background-color: #14807a;
@@ -278,6 +332,11 @@ QPushButton#Ghost {
     padding: 6px 12px;
 }
 QPushButton#Ghost:hover { border-color: #33465a; color: #e6edf3; }
+QPushButton#Ghost:disabled {
+    border-color: #1b242e;
+    color: #4a5866;
+}
+QPushButton:disabled { color: #4a5866; }
 
 QTableWidget {
     background-color: #0f151c;

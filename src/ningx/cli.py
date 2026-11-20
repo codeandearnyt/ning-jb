@@ -170,6 +170,9 @@ def run_self_check(ctx: AppContext) -> list[CheckResult]:
     # --- deterministic analysis ------------------------------------------------
     results.extend(_check_analysis(ctx))
 
+    # --- AI layer: honest inventory and a closed proposal boundary ------------
+    results.extend(_check_ai(ctx))
+
     # --- mutation path is closed ---------------------------------------------
     from ningx.winapi.ops import RealWindowsOps
 
@@ -217,9 +220,13 @@ def _check_telemetry(ctx: AppContext) -> CheckResult:
         and sample.cpu.logical_count >= 1
         and 0.0 <= sample.memory.used_pct <= 100.0
     )
+    cpu_text = (
+        f"{sample.cpu.total_pct:.0f}%"
+        if sample.cpu.total_pct is not None
+        else "warming up"
+    )
     detail = (
-        f"cpu={sample.cpu.total_pct if sample.cpu.total_pct is not None else 'warming'}"
-        f"%/{sample.cpu.logical_count} cores"
+        f"cpu={cpu_text}/{sample.cpu.logical_count} cores"
         f" memory={human_bytes(sample.memory.used_bytes)}/{human_bytes(sample.memory.total_bytes)}"
         f" gpu={sample.gpu.utilization.state}"
         f" processes={len(sample.processes)}"
@@ -264,6 +271,120 @@ def _check_analysis(ctx: AppContext) -> list[CheckResult]:
         )
     except Exception as exc:
         results.append(CheckResult("analysis.storage", False, type(exc).__name__))
+
+    return results
+
+
+def _check_ai(ctx: AppContext) -> list[CheckResult]:
+    """Prove the AI layer is honest about what exists and closed to what does not.
+
+    Nothing here calls a provider or spends a token. It checks the catalogue the
+    UI reads, the storage path it writes through, and the proposal validator that
+    every model response must survive.
+    """
+    import json
+
+    from ningx.ai.prompt import build_system_prompt, proposable_specs
+    from ningx.ai.proposal import ProposalRejected, parse_proposals
+    from ningx.providers.catalogue import PROFILES, implemented_kinds
+
+    results: list[CheckResult] = []
+
+    implemented = implemented_kinds()
+    honest = all(PROFILES[kind].implemented for kind in implemented) and all(
+        profile.implemented or profile.note for profile in PROFILES.values()
+    )
+    results.append(
+        CheckResult(
+            "ai.provider_catalogue",
+            honest and len(PROFILES) > 0,
+            f"{len(implemented)} implemented of {len(PROFILES)}: {', '.join(implemented)}",
+        )
+    )
+
+    try:
+        stored = ctx.providers_repo.list_all()
+        results.append(
+            CheckResult(
+                "providers.storage",
+                True,
+                f"{len(stored)} configured"
+                + (f", {sum(1 for item in stored if item.enabled)} enabled" if stored else ""),
+            )
+        )
+    except Exception as exc:
+        results.append(CheckResult("providers.storage", False, type(exc).__name__))
+
+    valid = {
+        "action_type": "startup_disable",
+        "target": {
+            "kind": "startup",
+            "hive": "HKCU",
+            "registry_path": (
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer"
+                r"\StartupApproved\Run"
+            ),
+            "value_name": "SelfCheckEntry",
+        },
+        "reason": "self-check sample",
+    }
+
+    def rejects(payload: dict[str, object], expected: str) -> bool:
+        try:
+            parse_proposals(
+                json.dumps(payload),
+                registry=ctx.registry,
+                agent_id="selfcheck",
+                provider_id="none",
+                model="none",
+            )
+        except ProposalRejected as exc:
+            return exc.reason == expected
+        return False
+
+    try:
+        parsed = parse_proposals(
+            json.dumps({"proposals": [valid]}),
+            registry=ctx.registry,
+            agent_id="selfcheck",
+            provider_id="none",
+            model="none",
+        )
+        relabelled = parsed[0].action.requested_by == "agent:selfcheck"
+        refused = (
+            rejects({**valid, "risk": "low"}, "proposal.invalid_action")
+            and rejects(
+                {**valid, "parameters": {"command": "cmd /c whoami"}},
+                "proposal.unknown_parameter",
+            )
+            and rejects({**valid, "action_type": "shell_execute"}, "proposal.unknown_action_type")
+            and rejects({**valid, "reason": "  "}, "proposal.missing_reason")
+        )
+        results.append(
+            CheckResult(
+                "ai.proposal_boundary",
+                relabelled and refused,
+                "1 accepted and relabelled, 4 hostile payloads refused",
+            )
+        )
+    except Exception as exc:
+        results.append(CheckResult("ai.proposal_boundary", False, type(exc).__name__))
+
+    try:
+        system = build_system_prompt(ctx.registry)
+        specs = proposable_specs(ctx.registry)
+        offered = all(spec.action_type in system for spec in specs)
+        denied = [spec.action_type for spec in ctx.registry if spec.denied_in_release]
+        withheld = all(f"- {name} (" not in system for name in denied)
+        results.append(
+            CheckResult(
+                "ai.prompt",
+                offered and withheld and bool(specs),
+                f"{len(specs)} actions described, {len(denied)} denied actions withheld",
+            )
+        )
+    except Exception as exc:
+        results.append(CheckResult("ai.prompt", False, type(exc).__name__))
 
     return results
 

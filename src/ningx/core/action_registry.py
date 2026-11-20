@@ -34,6 +34,10 @@ class ActionSpec:
     description: str
     rollback: str | None = None
     denied_in_release: bool = False
+    # The complete set of parameter names this action understands. Anything else
+    # is refused rather than carried around as inert text that could hide a
+    # command line or an executor hint.
+    allowed_parameters: frozenset[str] = frozenset()
 
 
 class ActionRegistry:
@@ -131,6 +135,7 @@ def build_default_registry() -> ActionRegistry:
             full_access_eligible=False,
             description="Move a file as part of a reversible organization manifest.",
             rollback="reverse_manifest_move",
+            allowed_parameters=frozenset({"destination"}),
         ),
         ActionSpec(
             action_type="registry_set",

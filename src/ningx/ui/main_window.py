@@ -24,6 +24,7 @@ from ningx.ui.screens.live_monitor import LiveMonitorScreen
 from ningx.ui.screens.optimization import OptimizationScreen
 from ningx.ui.screens.placeholder import PlaceholderScreen
 from ningx.ui.screens.policy_lab import PolicyLabScreen
+from ningx.ui.screens.providers import ProvidersScreen
 
 
 @dataclass(frozen=True)
@@ -103,18 +104,8 @@ SCREENS: tuple[ScreenSpec, ...] = (
         group="INTELLIGENCE",
         title="AI Providers",
         subtitle="Credentials, models, routing and usage",
-        factory=_placeholder(
-            "AI providers",
-            "Milestone 4",
-            "Gemini, OpenAI, Groq, OpenRouter, NVIDIA, Anthropic, Ollama, Cloudflare AI "
-            "Gateway, OpenCode Zen and any OpenAI-compatible endpoint, behind one adapter.",
-            (
-                "Credentials stored in Windows Credential Manager, never in config",
-                "Connection tests that report the real failure, not a spinner",
-                "Local-only mode that makes cloud routing impossible",
-                "Token usage labelled measured or estimated",
-            ),
-        ),
+        factory=ProvidersScreen,
+        is_ready=True,
     ),
     ScreenSpec(
         key="approvals",

@@ -18,6 +18,7 @@ from ningx.core.action_registry import ActionRegistry
 from ningx.core.dry_run import DryRunExecutor
 from ningx.core.permission_manager import PermissionManager
 from ningx.core.policy_engine import PolicyEngine
+from ningx.providers.router import ProviderRegistry, ProviderRouter
 from ningx.security.path_validator import PathValidator
 from ningx.security.process_validator import ProcessProbe, ProcessValidator
 from ningx.security.protected_targets import ProtectedTargets
@@ -28,6 +29,7 @@ from ningx.storage.db import Database
 from ningx.storage.repositories.actions import SqliteActionRepository
 from ningx.storage.repositories.audit import SqliteAuditSink
 from ningx.storage.repositories.findings import SqliteFindingRepository
+from ningx.storage.repositories.providers import SqliteProviderRepository
 from ningx.storage.repositories.settings import SqliteSettingsStore
 from ningx.storage.repositories.telemetry import SqliteTelemetryRepository
 from ningx.telemetry.engine import TelemetryEngine
@@ -60,8 +62,23 @@ class AppContext:
     startup_collector: StartupCollector
     junk_scanner: JunkScannerPort
     scanner: ScanRunner
+    providers_repo: SqliteProviderRepository
+    provider_registry: ProviderRegistry
     clock: Clock
     logger: logging.Logger
+
+    def make_router(self) -> ProviderRouter:
+        """A router over the *current* stored configurations.
+
+        Built per use rather than stored, so enabling a provider in the UI takes
+        effect on the next request without restarting the application.
+        """
+        return ProviderRouter(
+            self.providers_repo.list_all(),
+            self.provider_registry,
+            audit=self.audit,
+            clock=self.clock,
+        )
 
 
 __all__ = ["AppContext"]

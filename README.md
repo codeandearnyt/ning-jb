@@ -3,11 +3,12 @@
 AI-assisted Windows performance and maintenance, built around a deterministic
 safety spine. An AI may observe and recommend; it may never execute.
 
-**Status: pre-release vertical slice (M0–M3).** The application reads system
+**Status: pre-release vertical slice (M0–M4).** The application reads system
 state, evaluates action proposals against a real policy engine, samples live
-telemetry and turns measurements into evidence-backed findings. No mutation path
-is enabled in this build: `RealWindowsOps` raises `MutationNotAvailable` for
-every write.
+telemetry and turns measurements into evidence-backed findings. An AI provider
+can describe a plan, but the model's output only becomes a typed proposal after
+it passes the registry and parameter boundary. No mutation path is enabled in
+this build: `RealWindowsOps` raises `MutationNotAvailable` for every write.
 
 ## What exists today
 
@@ -58,6 +59,29 @@ every write.
   category, shows evidence and the suggested action type, and refuses to scan a
   measurement older than two minutes rather than describing stale data as
   current.
+- **Provider layer with one real adapter** (`ningx.providers`). The catalogue is a
+  closed set; `gemini` is the only kind implemented in this release and every
+  other kind reports "adapter not built yet". The Gemini adapter uses
+  `google-genai`, counts thinking tokens as output because they are billed as
+  output, and disables SDK retries so a timeout stays a timeout.
+- **Routing that can refuse.** Before a request is sent, the router evaluates
+  local-only, fallback permission and a pinned provider, and reports the plan it
+  would follow. Rate limiting is not retried automatically because a retry spends
+  quota.
+- **Honest usage accounting.** `TokenUsage` cannot carry counts while marked
+  unavailable, an estimate is a separate type from a measurement, and `p95`
+  latency is withheld below 20 samples.
+- **Proposal boundary.** Model JSON becomes a typed `Action` only if it names a
+  registered, non-denied action and only parameters on that action's allowlist;
+  `requested_by` is overwritten with `agent:<id>`, and `risk` or `reversible`
+  supplied by a model is rejected.
+- **Prompt built from the registry** (`ningx.ai.prompt`): the system prompt is
+  generated from the sealed registry, denied actions are withheld, and finding
+  text is flattened so a measurement cannot smuggle instructions into a prompt.
+- **AI Providers screen.** Configure a provider, store its key in Credential
+  Manager, test the connection (lists models and spends no generation tokens),
+  fetch models, set the routing policy, and read the stored usage ledger. The
+  routing card shows a live preview and says "Preview only: nothing is sent."
 - **Policy Lab UI** (PySide6): paste an untrusted action payload, choose a mode,
   and see every decision reason in precedence order. It audits the evaluation,
   cannot execute, and cannot change the saved mode.
@@ -90,8 +114,9 @@ Run the checks:
 `--check` boots the real composition root and verifies the database schema, the
 sealed registry, the permission truth table, Credential Manager round-trip,
 audit redaction, the Windows read path, the deterministic analysts against one
-real sample, the findings store, and that mutations stay disabled. It performs
-no system change and writes no scan to the history.
+real sample, the findings store, the AI provider catalogue and proposal
+boundary, and that mutations stay disabled. It performs no system change, makes
+no network request and writes no scan to the history.
 
 Launch the UI:
 

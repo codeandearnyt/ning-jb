@@ -71,7 +71,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "PLR2004", "ARG001", "ARG002", "S108"]
+"tests/**" = ["S101", "PLR2004", "ARG001", "ARG002", "ARG005", "S108"]
 # Lazy imports keep optional Windows, Qt and provider dependencies out of the
 # core import graph; the mutation stubs in winapi/ops.py take unused arguments
 # by design because they must match the WindowsOps protocol.
@@ -83,6 +83,10 @@ ignore = [
 "src/ningx/security/startup_collector.py" = ["PLC0415"]
 "src/ningx/telemetry/gpu.py" = ["PLC0415"]
 "src/ningx/telemetry/sampler.py" = ["PLC0415"]
+"src/ningx/providers/gemini.py" = ["PLC0415"]
+# The stand-in provider must keep the protocol's parameter names even where it
+# has no use for them; it answers every call with "not configured".
+"src/ningx/providers/base.py" = ["ARG002"]
 "src/ningx/ui/app.py" = ["PLC0415"]
 "src/ningx/ui/theme.py" = ["PLC0415"]
 "src/ningx/winapi/ops.py" = ["PLC0415", "ARG002"]

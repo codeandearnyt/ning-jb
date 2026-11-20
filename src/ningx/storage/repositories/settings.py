@@ -72,6 +72,9 @@ class SqliteSettingsStore:
             return default
         return raw.strip().lower() in {"1", "true", "yes", "on"}
 
+    def set_bool(self, key: str, value: bool) -> None:
+        self.set(key, "true" if value else "false")
+
     def get_json(self, key: str, default: Any) -> Any:
         raw = self.get(key)
         if raw is None:
