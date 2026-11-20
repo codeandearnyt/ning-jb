@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Build output
+build/
+dist/
+*.spec
+*.exe
+*.msi
+
+# Application data — never commit databases or credentials
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+.env
+.env.*
+secrets.json
+
+# Local scratch
+.agent/
+*.log
+scratch/
