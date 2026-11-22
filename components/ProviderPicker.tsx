@@ -86,7 +86,6 @@ export function ProviderPicker({
 
   const suggestions = active?.suggestedModels ?? [];
   const listId = `${id}-models`;
-
   // Lit when this forge will actually have a key: typed here or on the server.
   const willHaveKey = apiKey.trim().length > 0 || active?.configured === true;
   const usesServerKey = apiKey.trim().length === 0 && active?.configured === true;
@@ -135,6 +134,23 @@ export function ProviderPicker({
       setTesting(false);
     }
   }
+
+  // Latency under a second reads as milliseconds; anything else as seconds.
+  const probeLatency =
+    probe?.kind === "ok"
+      ? probe.latencyMs < 1_000
+        ? `${probe.latencyMs} ms`
+        : `${(probe.latencyMs / 1_000).toFixed(1)} s`
+      : "";
+
+  // Providers answer with anything from "ok" to a wall of JSON. Flatten and
+  // clip it so the line never wraps into the layout.
+  const probeReply = (() => {
+    if (probe?.kind !== "ok") return "";
+    const flat = probe.reply.replace(/\s+/g, " ").trim();
+    if (!flat) return " · reachable, empty reply";
+    return ` · “${flat.slice(0, 48)}${flat.length > 48 ? "…" : ""}”`;
+  })();
 
   return (
     <div className="space-y-4">
@@ -265,10 +281,8 @@ export function ProviderPicker({
                   <span className="text-good">ok</span>
                   <span className="text-muted">
                     {" · "}
-                    {(probe.latencyMs / 1000).toFixed(1)}s · {probe.model}
-                    {probe.reply
-                      ? ` · “${probe.reply}”`
-                      : " · reachable, empty reply"}
+                    {probeLatency} · {probe.model}
+                    {probeReply}
                   </span>
                 </>
               ) : (
