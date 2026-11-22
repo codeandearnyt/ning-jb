@@ -9,6 +9,7 @@ import { DEFAULT_PROVIDER_ID } from "@/lib/providers";
 import { FRAME_OPTIONS, TARGET_AI_OPTIONS } from "@/lib/types";
 
 const STORAGE_KEY = "ning-jb:v1";
+const KEYS_KEY = "ning-jb:keys";
 
 interface StoredDraft {
   target?: string;
@@ -28,6 +29,7 @@ export function ForgeForm() {
   const [constraints, setConstraints] = useState("");
   const [provider, setProvider] = useState(DEFAULT_PROVIDER_ID);
   const [model, setModel] = useState("");
+  const [keys, setKeys] = useState<Record<string, string>>({});
   const [output, setOutput] = useState<OutputState>({ kind: "empty" });
   const [hydrated, setHydrated] = useState(false);
 
@@ -53,6 +55,18 @@ export function ForgeForm() {
         if (typeof saved.provider === "string" && saved.provider)
           setProvider(saved.provider);
         if (typeof saved.model === "string") setModel(saved.model);
+      }
+
+      // Keys live under their own storage entry so clearing the draft never
+      // wipes them, and clearing keys never wipes the draft.
+      const rawKeys = window.localStorage.getItem(KEYS_KEY);
+      if (rawKeys) {
+        const parsed = JSON.parse(rawKeys) as Record<string, unknown>;
+        const clean: Record<string, string> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === "string" && v.trim()) clean[k] = v.trim();
+        }
+        setKeys(clean);
       }
     } catch {
       // Corrupt or blocked storage — start clean.
@@ -87,6 +101,15 @@ export function ForgeForm() {
     model,
   ]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(KEYS_KEY, JSON.stringify(keys));
+    } catch {
+      // Storage full or blocked. Not worth surfacing.
+    }
+  }, [hydrated, keys]);
+
   const submit = useCallback(async () => {
     const trimmed = target.trim();
     if (!trimmed) {
@@ -108,6 +131,7 @@ export function ForgeForm() {
           frame,
           provider,
           model: model.trim(),
+          apiKey: (keys[provider] ?? "").trim(),
         }),
       });
 
@@ -163,7 +187,16 @@ export function ForgeForm() {
           : "Could not reach the forge. Check the connection and try again.";
       setOutput({ kind: "error", message });
     }
-  }, [target, targetAi, constraints, checklistClass, frame, provider, model]);
+  }, [
+    target,
+    targetAi,
+    constraints,
+    checklistClass,
+    frame,
+    provider,
+    model,
+    keys,
+  ]);
 
   const clearOutput = useCallback(() => setOutput({ kind: "empty" }), []);
 
@@ -294,7 +327,7 @@ export function ForgeForm() {
               <div className="flex items-baseline justify-between gap-2">
                 <span className="label">engine</span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
-                  server-side key
+                  bring your own key
                 </span>
               </div>
               <ProviderPicker
@@ -303,6 +336,10 @@ export function ForgeForm() {
                 onChange={setProvider}
                 model={model}
                 onModelChange={setModel}
+                apiKey={keys[provider] ?? ""}
+                onApiKeyChange={(v) =>
+                  setKeys((prev) => ({ ...prev, [provider]: v }))
+                }
                 disabled={busy}
               />
             </div>

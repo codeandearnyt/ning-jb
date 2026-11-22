@@ -73,10 +73,15 @@ export const PROVIDERS: Provider[] = [
     label: "Google Gemini",
     type: "Cloud AI",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/",
-    defaultModel: "gemini-3.8-flash",
-    suggestedModels: ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"],
+    defaultModel: "gemini-3.1-flash-lite",
+    suggestedModels: [
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.8-flash",
+      "gemini-3.1-pro-preview",
+    ],
     keyVars: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
-    note: "Google's OpenAI-compat shim. Long context, fast flash tier.",
+    note: "Google's OpenAI-compat shim. flash-lite answers in ~3s; the 3.5+ tiers are reasoners and can exceed the 60s clamp.",
     docs: "https://ai.google.dev/gemini-api/docs/openai",
   },
   {
@@ -224,10 +229,14 @@ export class ProviderConfigError extends Error {
 /**
  * Turn a registry row into a callable config. Throws ProviderConfigError with
  * the exact env var the operator has to set.
+ *
+ * A key supplied with the request wins over the environment. It is used for
+ * this call only — never stored, never logged, never returned.
  */
 export function resolveProvider(
   id: string | undefined,
   modelOverride?: string,
+  keyOverride?: string,
 ): ResolvedProvider {
   const provider = getProvider(id) ?? getProvider(DEFAULT_PROVIDER_ID)!;
 
@@ -266,16 +275,23 @@ export function resolveProvider(
     );
   }
 
-  // Key.
+  // Key. Request-supplied first, then the environment.
+  const override = keyOverride?.trim();
   const found = firstEnv(provider.keyVars);
   let apiKey: string;
-  if (found) {
+  let keySource: string;
+  if (override) {
+    apiKey = override;
+    keySource = "request";
+  } else if (found) {
     apiKey = found.value;
+    keySource = found.name;
   } else if (provider.keyOptional) {
     apiKey = "local";
+    keySource = "none";
   } else {
     throw new ProviderConfigError(
-      `${provider.label} needs ${provider.keyVars[0]} on the server.`,
+      `${provider.label} needs a key. Paste one in the form, or set ${provider.keyVars[0]} on the server.`,
     );
   }
 
@@ -291,7 +307,7 @@ export function resolveProvider(
     );
   }
 
-  return { provider, baseUrl, apiKey, model, keyVar: found?.name ?? "" };
+  return { provider, baseUrl, apiKey, model, keyVar: keySource };
 }
 
 /**

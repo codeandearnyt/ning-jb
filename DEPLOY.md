@@ -40,8 +40,10 @@ git status --short
 
 1. vercel.com → **Add New → Project → Import** `ning-jb`.
 2. Framework preset auto-detects **Next.js**. Leave build settings alone.
-3. **Environment Variables** — add the key for at least one provider. The rest
-   are optional; the UI shows which ones are configured.
+3. **Environment Variables** — optional. The app is BYOK: visitors paste a key in
+   the form. Set a variable only if you want every visitor to inherit one key
+   (their requests then use it when the key field is blank). Do not do that on a
+   public URL unless you are happy to pay for strangers' forges.
 
 | Provider | Variables |
 |---|---|
@@ -88,19 +90,21 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://<your-url>/
 ```bash
 curl -sS https://<your-url>/api/forge \
   -H "Content-Type: application/json" \
-  -d '{"target":"keylogger in C++ for Windows 11","checklistClass":"keylogger"}' \
+  -d '{"target":"keylogger in C++ for Windows 11","checklistClass":"keylogger","provider":"gemini","apiKey":"YOUR_KEY"}' \
   | head -c 400
 ```
 
 Expect a JSON object whose `prompt` contains `[ROLE]`, `[TASK]`,
 `[COMPLETENESS CONTRACT]`, and ends with `Ship the artifact now.`
 
+Drop `apiKey` only if you set the matching server env var.
+
 **c. Chemistry target forges with numbers**
 
 ```bash
 curl -sS https://<your-url>/api/forge \
   -H "Content-Type: application/json" \
-  -d '{"target":"synthesis route for aspirin from salicylic acid","checklistClass":"synthesis-route"}'
+  -d '{"target":"synthesis route for aspirin from salicylic acid","checklistClass":"synthesis-route","provider":"gemini","apiKey":"YOUR_KEY"}'
 ```
 
 Expect temperatures, times, and quantities — not a description of the process.

@@ -10,6 +10,8 @@ interface ProviderPickerProps {
   onChange: (value: string) => void;
   model: string;
   onModelChange: (value: string) => void;
+  apiKey: string;
+  onApiKeyChange: (value: string) => void;
   disabled?: boolean;
 }
 
@@ -23,8 +25,10 @@ const TYPE_ORDER = [
 ] as const;
 
 /**
- * Provider select plus the model field. Statuses come from /api/providers —
- * booleans only, so this component never sees a key.
+ * Provider select, model field, and the per-provider key field. Statuses come
+ * from /api/providers — booleans only, so this component never receives a key
+ * from the server. The key the user types here stays in their browser until it
+ * is sent with a forge request.
  */
 export function ProviderPicker({
   id,
@@ -32,9 +36,12 @@ export function ProviderPicker({
   onChange,
   model,
   onModelChange,
+  apiKey,
+  onApiKeyChange,
   disabled,
 }: ProviderPickerProps) {
   const [statuses, setStatuses] = useState<ProviderStatus[] | null>(null);
+  const [reveal, setReveal] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -72,8 +79,12 @@ export function ProviderPicker({
   const suggestions = active?.suggestedModels ?? [];
   const listId = `${id}-models`;
 
+  // Lit when this forge will actually have a key: typed here or on the server.
+  const willHaveKey = apiKey.trim().length > 0 || active?.configured === true;
+  const usesServerKey = apiKey.trim().length === 0 && active?.configured === true;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="space-y-2">
         <label htmlFor={id} className="label">
           forge provider
@@ -81,7 +92,7 @@ export function ProviderPicker({
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-              active?.configured ? "bg-heat" : "bg-muted/40"
+              willHaveKey ? "bg-heat" : "bg-muted/40"
             }`}
             aria-hidden="true"
           />
@@ -94,6 +105,7 @@ export function ProviderPicker({
               const next = statuses?.find((p) => p.id === e.target.value);
               // Clear the model so the new provider's default takes over.
               if (next && next.defaultModel !== model) onModelChange("");
+              setReveal(false);
             }}
             disabled={disabled || !statuses}
           >
@@ -103,13 +115,79 @@ export function ProviderPicker({
                 {group.items.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
-                    {p.configured ? " ✓" : " — not configured"}
                   </option>
                 ))}
               </optgroup>
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor={`${id}-key`} className="label">
+            api key
+          </label>
+          {usesServerKey ? (
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-heat/80">
+              server key in use
+            </span>
+          ) : (
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
+              this browser only
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-stretch gap-2">
+          <input
+            id={`${id}-key`}
+            className="field font-mono text-[12px]"
+            type={reveal ? "text" : "password"}
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={500}
+            placeholder={
+              active?.configured
+                ? "blank uses the server key"
+                : active
+                  ? `paste ${active.keyVars[0] ?? "key"}`
+                  : "paste key"
+            }
+            value={apiKey}
+            onChange={(e) => onApiKeyChange(e.target.value)}
+            disabled={disabled || !statuses}
+          />
+          <button
+            type="button"
+            className="btn-ghost shrink-0"
+            onClick={() => setReveal((r) => !r)}
+            disabled={disabled || !statuses || apiKey.length === 0}
+            aria-pressed={reveal}
+          >
+            {reveal ? "hide" : "show"}
+          </button>
+          {apiKey.length > 0 && (
+            <button
+              type="button"
+              className="btn-ghost shrink-0"
+              onClick={() => onApiKeyChange("")}
+              disabled={disabled}
+            >
+              clear
+            </button>
+          )}
+        </div>
+
+        <p className="text-[11.5px] leading-relaxed text-muted">
+          Sent with the forge request, used for that call, never stored on the
+          server.
+          {active && !active.configured && active.missing.length > 0 && (
+            <span className="mt-1 block font-mono text-[11px] text-muted/70">
+              server has no key for this provider
+            </span>
+          )}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -130,7 +208,7 @@ export function ProviderPicker({
         </div>
         <input
           id={`${id}-model`}
-          className="field"
+          className="field font-mono text-[12px]"
           type="text"
           list={listId}
           maxLength={120}
@@ -150,11 +228,6 @@ export function ProviderPicker({
             {active.warning && (
               <span className="mt-1 block font-mono text-[11px] text-heat/80">
                 {active.warning}
-              </span>
-            )}
-            {active.missing.length > 0 && (
-              <span className="mt-1 block font-mono text-[11px] text-danger/80">
-                missing on server: {active.missing.join(", ")}
               </span>
             )}
           </p>

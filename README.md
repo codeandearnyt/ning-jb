@@ -40,13 +40,35 @@ cp .env.example .env.local     # then put a real key in it
 npm run dev                    # http://localhost:3000
 ```
 
-Minimum viable env — one key from any provider in the table below:
+Minimum viable env: **none.**
+
+Keys are typed into the form. The key field sits under the provider picker,
+stores per provider in `localStorage`, and travels with the forge request. The
+server uses it for that one call and never writes it down.
+
+A server-side key is the fallback, not the requirement — set one and every
+visitor inherits it (blank key field uses it).
 
 ```dotenv
-OPENAI_API_KEY=sk-...
+# optional
+GEMINI_API_KEY=...
 ```
 
-That is it. Pick a different backend in the form, not in the code.
+## Bring your own key
+
+The picker is BYOK-first:
+
+- The **api key** field is masked, with a show toggle and a clear button.
+- Each provider keeps its own key in `localStorage` under `ning-jb:keys`.
+  Switching providers switches keys.
+- A lit dot next to the select means the forge will have a key — typed here, or
+  present on the server.
+- The key is sent in the request body over TLS, used for one call, and scrubbed
+  from any error message before it reaches the browser.
+- It is never logged, never stored server-side, and never returned.
+
+That makes the public deploy safe to share: nobody's quota is on the line except
+the person typing the key.
 
 ## Providers
 
@@ -77,7 +99,7 @@ server has what it needs.
 A missing variable is a `500` that names it exactly:
 
 ```json
-{"error":"Groq needs GROQ_API_KEY on the server."}
+{"error":"Google Gemini needs a key. Paste one in the form, or set GEMINI_API_KEY on the server."}
 ```
 
 `CUSTOM_BASE_URL` is read from the server only. The browser cannot point the

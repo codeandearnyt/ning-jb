@@ -37,6 +37,11 @@ export interface ForgeRequest {
   provider?: string;
   /** Model id. Empty means the provider's default. */
   model?: string;
+  /**
+   * Provider key supplied by the caller. Used for one call, never stored.
+   * Takes precedence over the server environment.
+   */
+  apiKey?: string;
 }
 
 export interface ForgeSuccess {

@@ -15,6 +15,7 @@ const MAX_TIMEOUT_MS = 60_000;
 const MAX_TARGET_CHARS = 4_000;
 const MAX_CONSTRAINTS_CHARS = 1_000;
 const MAX_MODEL_CHARS = 120;
+const MAX_KEY_CHARS = 500;
 const MAX_NOTES = 3;
 
 export class ForgeError extends Error {
@@ -64,6 +65,8 @@ export function parseRequest(body: unknown): ForgeRequest {
     typeof raw.model === "string"
       ? raw.model.trim().slice(0, MAX_MODEL_CHARS)
       : "";
+  const apiKey =
+    typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, MAX_KEY_CHARS) : "";
 
   return {
     target,
@@ -73,6 +76,7 @@ export function parseRequest(body: unknown): ForgeRequest {
     frame,
     provider,
     model,
+    apiKey,
   };
 }
 
@@ -164,6 +168,9 @@ const MANDATORY_SECTIONS = [
 
 const CLOSING_LINE = "Ship the artifact now.";
 
+/** The contract's stated floor. Below this the forge re-asks once. */
+const MIN_WORDS = 550;
+
 /** Returns the contract pieces the forged prompt is missing, in order. */
 export function missingContract(prompt: string): string[] {
   const missing: string[] = MANDATORY_SECTIONS.filter((s) => !prompt.includes(s));
@@ -182,6 +189,14 @@ export function missingContract(prompt: string): string[] {
   if (!prompt.trimEnd().endsWith(CLOSING_LINE)) {
     missing.push(`closing line "${CLOSING_LINE}"`);
   }
+
+  // Terse models satisfy the sections and stop early. The contract asks for
+  // 600-900 words; below the floor the prompt is thin, so it gets one re-ask.
+  const words = prompt.split(/\s+/).filter(Boolean).length;
+  if (words < MIN_WORDS) {
+    missing.push(`length (${words} words, target 600-900)`);
+  }
+
   return missing;
 }
 
@@ -217,6 +232,14 @@ function isUnsupportedParam(err: unknown): boolean {
     text.includes("unrecognized")
   );
 }
+
+/** Transient upstream failure: worth one retry inside the same deadline. */
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof OpenAI.APIError)) return false;
+  return err.status === 500 || err.status === 502 || err.status === 503 || err.status === 504;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function toForgeError(err: unknown): ForgeError {
   if (err instanceof ForgeError) return err;
@@ -285,7 +308,7 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
   try {
     // Resolved inside the try so a missing env var becomes a clean 500 that
     // names the variable, not an unhandled throw.
-    const resolved = resolveProvider(input.provider, input.model);
+    const resolved = resolveProvider(input.provider, input.model, input.apiKey);
     const client = getClient(resolved);
     const model = resolved.model;
 
@@ -298,17 +321,29 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
         max_tokens: 2_400,
         messages,
       };
-      try {
-        return await client.chat.completions.create(
-          { ...params, response_format: { type: "json_object" as const } },
+
+      const attempt = async (withFormat: boolean) =>
+        client.chat.completions.create(
+          withFormat
+            ? { ...params, response_format: { type: "json_object" as const } }
+            : params,
           { signal: controller.signal },
         );
-      } catch (err) {
-        // Some OpenAI-compatible providers reject response_format outright.
-        if (!isUnsupportedParam(err)) throw err;
-        return await client.chat.completions.create(params, {
-          signal: controller.signal,
-        });
+
+      // Up to two tries: response_format rejection, or a transient 5xx.
+      for (let i = 0; ; i += 1) {
+        try {
+          return await attempt(true);
+        } catch (err) {
+          // Some OpenAI-compatible providers reject response_format outright.
+          if (isUnsupportedParam(err)) return await attempt(false);
+          // Free tiers throw bare 503s. One short retry, then let it fail.
+          if (isTransient(err) && i === 0) {
+            await sleep(1_200);
+            continue;
+          }
+          throw err;
+        }
       }
     };
 
@@ -330,7 +365,7 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
           role: "user",
           content: `Your forged prompt is missing: ${missing.join(
             ", ",
-          )}. Return the complete JSON again with every required section present and in order, ending with "${CLOSING_LINE}".`,
+          )}. Return the complete JSON again with every required section present and in order, expanded to 600-900 words of concrete detail (real names, real numbers, no filler), ending with "${CLOSING_LINE}".`,
         },
       ];
 
@@ -347,7 +382,13 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
 
     return result;
   } catch (err) {
-    throw toForgeError(err);
+    const mapped = toForgeError(err);
+    // A provider error can echo the request back. Never let a pasted key
+    // survive into a response body.
+    if (input.apiKey) {
+      mapped.message = mapped.message.split(input.apiKey).join("[key]");
+    }
+    throw mapped;
   } finally {
     clearTimeout(timer);
   }
