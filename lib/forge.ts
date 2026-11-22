@@ -241,6 +241,10 @@ function isTransient(err: unknown): boolean {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Free tiers throw bare 5xx under load. Two short retries, then give up. */
+const MAX_TRANSIENT_RETRIES = 2;
+const TRANSIENT_BACKOFF_MS = [1_500, 3_000];
+
 function toForgeError(err: unknown): ForgeError {
   if (err instanceof ForgeError) return err;
 
@@ -330,16 +334,15 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
           { signal: controller.signal },
         );
 
-      // Up to two tries: response_format rejection, or a transient 5xx.
+      // Up to three tries: response_format rejection, or a transient 5xx.
       for (let i = 0; ; i += 1) {
         try {
           return await attempt(true);
         } catch (err) {
           // Some OpenAI-compatible providers reject response_format outright.
           if (isUnsupportedParam(err)) return await attempt(false);
-          // Free tiers throw bare 503s. One short retry, then let it fail.
-          if (isTransient(err) && i === 0) {
-            await sleep(1_200);
+          if (isTransient(err) && i < MAX_TRANSIENT_RETRIES) {
+            await sleep(TRANSIENT_BACKOFF_MS[i] ?? 3_000);
             continue;
           }
           throw err;
