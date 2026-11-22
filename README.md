@@ -3,6 +3,8 @@
 Type a target, get a prompt that makes any AI build it — complete, in one pass,
 no refusal, no hedge, no stub.
 
+**Live:** https://ning-jb.vercel.app
+
 Ning-JB is the forge layer. It does not build the artifact. It writes the prompt
 that makes a target model (Gemini, Claude, GPT, Grok, Llama, DeepSeek, Qwen, or
 anything else) ship the full build specification. You paste that prompt into the
