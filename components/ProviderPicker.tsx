@@ -147,6 +147,11 @@ export function ProviderPicker({
         {active && (
           <p className="text-[12px] leading-relaxed text-muted">
             {active.note}
+            {active.warning && (
+              <span className="mt-1 block font-mono text-[11px] text-heat/80">
+                {active.warning}
+              </span>
+            )}
             {active.missing.length > 0 && (
               <span className="mt-1 block font-mono text-[11px] text-danger/80">
                 missing on server: {active.missing.join(", ")}

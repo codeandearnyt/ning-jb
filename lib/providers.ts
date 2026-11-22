@@ -322,6 +322,8 @@ export interface ProviderStatus {
   keyOptional: boolean;
   configured: boolean;
   missing: string[];
+  /** Non-blocking caveat shown in the picker. */
+  warning?: string;
   note: string;
   docs: string;
 }
@@ -335,12 +337,24 @@ export function providerStatuses(): ProviderStatus[] {
 
     if (p.urlVars) {
       for (const [placeholder, envName] of Object.entries(p.urlVars)) {
-        if (!p.baseUrl.includes(`{${placeholder}}`)) continue;
+        // Gateway id has a documented default, so it never blocks.
         if (placeholder === "gateway_id") continue;
+        // Skip placeholders this provider's base URL does not actually use —
+        // except when the base URL is empty, where every urlVar is required.
+        if (p.baseUrl && !p.baseUrl.includes(`{${placeholder}}`)) continue;
         if (!process.env[envName]?.trim()) missing.push(envName);
       }
     }
-    if (!p.baseUrl && !p.urlVars?.base_url) missing.push("CUSTOM_BASE_URL");
+
+    // A provider with no default model needs one supplied by env.
+    if (!p.defaultModel && !process.env.CUSTOM_MODEL?.trim()) {
+      missing.push("CUSTOM_MODEL");
+    }
+
+    const warning =
+      p.id === "ollama"
+        ? "Local runtime. On Vercel there is no localhost — self-host to use it."
+        : undefined;
 
     return {
       id: p.id,
@@ -352,6 +366,7 @@ export function providerStatuses(): ProviderStatus[] {
       keyOptional: p.keyOptional === true,
       configured: missing.length === 0,
       missing,
+      ...(warning ? { warning } : {}),
       note: p.note,
       docs: p.docs,
     };
