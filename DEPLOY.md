@@ -40,13 +40,28 @@ git status --short
 
 1. vercel.com → **Add New → Project → Import** `ning-jb`.
 2. Framework preset auto-detects **Next.js**. Leave build settings alone.
-3. **Environment Variables** — add these before the first deploy:
+3. **Environment Variables** — add the key for at least one provider. The rest
+   are optional; the UI shows which ones are configured.
+
+| Provider | Variables |
+|---|---|
+| OpenAI (default) | `OPENAI_API_KEY` |
+| Anthropic Claude | `ANTHROPIC_API_KEY` |
+| Google Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| Groq | `GROQ_API_KEY` |
+| NVIDIA NIM | `NVIDIA_API_KEY` |
+| Cloudflare AI Gateway | `CF_AIG_TOKEN`, `CF_ACCOUNT_ID`, `CF_GATEWAY_ID` (optional, defaults to `default`) |
+| OpenRouter | `OPENROUTER_API_KEY` |
+| OpenCode Zen | `OPENCODE_API_KEY` |
+| Ollama | none — localhost only, does not work on Vercel |
+| Custom | `CUSTOM_API_KEY`, `CUSTOM_BASE_URL`, `CUSTOM_MODEL` |
+
+Plus these, all optional:
 
 | Name | Value | Required |
 |---|---|---|
-| `OPENAI_API_KEY` | your provider key | yes |
 | `OPENAI_BASE_URL` | e.g. `https://api.groq.com/openai/v1` | no |
-| `FORGE_MODEL` | e.g. `llama-3.3-70b-versatile` | no |
+| `FORGE_MODEL` | default model for the OpenAI provider | no |
 | `FORGE_TIMEOUT_MS` | `60000` | no |
 
 Set them for **Production, Preview, and Development** unless you want preview
@@ -106,7 +121,19 @@ Expect exactly:
 
 If (b) or (c) returns `502`, the key or base URL is wrong. If it returns `504`,
 the model is too slow — raise `FORGE_TIMEOUT_MS` (max 60000) or move to a faster
-model.
+model. A `500` names the exact missing variable:
+
+```json
+{"error":"Groq needs GROQ_API_KEY on the server."}
+```
+
+**e. Provider status**
+
+```bash
+curl -sS https://<your-url>/api/providers
+```
+
+Expect ten rows. `configured: true` on every provider whose key is set.
 
 ## 4. Custom domain (optional)
 
@@ -122,7 +149,7 @@ no rebuild.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `OPENAI_API_KEY is not set on the server` | Env var missing in the target environment | Add it, then **redeploy** — env changes need a new build |
+| `X needs Y on the server` | Env var missing in the target environment | Add it, then **redeploy** — env changes need a new build |
 | `401` from the provider | Bad or revoked key | Rotate the key, update the env var |
 | `429` from the provider | Quota exhausted | Provider dashboard; or swap `OPENAI_BASE_URL` |
 | `504` timeout | Model too slow for the clamp | Faster model, or raise `FORGE_TIMEOUT_MS` |

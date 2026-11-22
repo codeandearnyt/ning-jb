@@ -72,7 +72,7 @@ const server = createServer((req, res) => {
       prompt: forged,
       notes: [
         `mock provider · checks ${JSON.stringify(checks)}`,
-        `response_format ${body.response_format ? "accepted" : "absent"}`,
+        `model ${body.model ?? "?"} · response_format ${body.response_format ? "accepted" : "absent"}`,
       ],
     };
 

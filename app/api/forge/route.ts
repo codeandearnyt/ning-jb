@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { forgePrompt, ForgeError, parseRequest, resolveModel } from "@/lib/forge";
+import { forgePrompt, ForgeError, parseRequest } from "@/lib/forge";
+import {
+  DEFAULT_PROVIDER_ID,
+  describeModel,
+  PROVIDER_IDS,
+} from "@/lib/providers";
 import { crossesWall } from "@/lib/wall";
 import { WALL_LINE, type ForgeRequest } from "@/lib/types";
 
@@ -56,12 +61,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status });
   }
 
+  // Unknown provider id is a client error, not a silent fallback to OpenAI.
+  if (input.provider && !PROVIDER_IDS.has(input.provider)) {
+    return NextResponse.json(
+      { error: `Unknown provider "${input.provider}".` },
+      { status: 400 },
+    );
+  }
+  const providerId = input.provider || DEFAULT_PROVIDER_ID;
+
   // The wall. Checked before the provider is touched, before any key is read.
   if (crossesWall(input.target)) {
     return NextResponse.json({
       prompt: WALL_LINE,
       notes: [],
-      model: resolveModel(),
+      model: describeModel(providerId, input.model),
+      provider: providerId,
       wall: true,
     });
   }
@@ -78,7 +93,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       prompt: result.prompt,
       notes: result.notes,
-      model: resolveModel(),
+      model: result.model,
+      provider: result.provider,
     });
   } catch (err) {
     const status = err instanceof ForgeError ? err.status : 500;

@@ -2,14 +2,19 @@ import OpenAI from "openai";
 
 import { getChecklist } from "@/lib/checklists";
 import { FORGE_SYSTEM_PROMPT } from "@/lib/prompt-template";
+import {
+  ProviderConfigError,
+  resolveProvider,
+  type ResolvedProvider,
+} from "@/lib/providers";
 import { FRAME_OPTIONS, type ForgeRequest } from "@/lib/types";
 
-const DEFAULT_MODEL = "gpt-4o";
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MIN_TIMEOUT_MS = 8_000;
 const MAX_TIMEOUT_MS = 60_000;
 const MAX_TARGET_CHARS = 4_000;
 const MAX_CONSTRAINTS_CHARS = 1_000;
+const MAX_MODEL_CHARS = 120;
 const MAX_NOTES = 3;
 
 export class ForgeError extends Error {
@@ -26,11 +31,6 @@ export function resolveTimeoutMs(): number {
   const raw = Number(process.env.FORGE_TIMEOUT_MS);
   if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_TIMEOUT_MS;
   return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.floor(raw)));
-}
-
-export function resolveModel(): string {
-  const model = process.env.FORGE_MODEL?.trim();
-  return model && model.length > 0 ? model : DEFAULT_MODEL;
 }
 
 /** Validated, trimmed input. Throws ForgeError(400) on bad payloads. */
@@ -58,8 +58,22 @@ export function parseRequest(body: unknown): ForgeRequest {
   const checklistClass =
     typeof raw.checklistClass === "string" ? raw.checklistClass.trim() : "";
   const frame = typeof raw.frame === "string" ? raw.frame.trim() : "";
+  const provider =
+    typeof raw.provider === "string" ? raw.provider.trim().toLowerCase() : "";
+  const model =
+    typeof raw.model === "string"
+      ? raw.model.trim().slice(0, MAX_MODEL_CHARS)
+      : "";
 
-  return { target, targetAi, constraints, checklistClass, frame };
+  return {
+    target,
+    targetAi,
+    constraints,
+    checklistClass,
+    frame,
+    provider,
+    model,
+  };
 }
 
 export function buildUserMessage(input: ForgeRequest): string {
@@ -94,18 +108,10 @@ export function buildUserMessage(input: ForgeRequest): string {
   return lines.join("\n");
 }
 
-function getClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    throw new ForgeError(
-      "OPENAI_API_KEY is not set on the server. Add it to the environment and redeploy.",
-      500,
-    );
-  }
-  const baseURL = process.env.OPENAI_BASE_URL?.trim();
+function getClient(resolved: ResolvedProvider): OpenAI {
   return new OpenAI({
-    apiKey,
-    ...(baseURL ? { baseURL } : {}),
+    apiKey: resolved.apiKey,
+    baseURL: resolved.baseUrl,
     timeout: resolveTimeoutMs(),
     maxRetries: 0,
   });
@@ -136,6 +142,12 @@ export function extractJson(text: string): unknown {
 interface ParsedForge {
   prompt: string;
   notes: string[];
+}
+
+/** What forgePrompt returns: the artifact plus the provider that served it. */
+export interface ForgeResult extends ParsedForge {
+  provider: string;
+  model: string;
 }
 
 /** Sections that must survive the round-trip. [FRAME] is optional by design. */
@@ -209,6 +221,12 @@ function isUnsupportedParam(err: unknown): boolean {
 function toForgeError(err: unknown): ForgeError {
   if (err instanceof ForgeError) return err;
 
+  // A missing env var is an operator error, not a provider failure. Surface the
+  // exact name so the fix is one line.
+  if (err instanceof ProviderConfigError) {
+    return new ForgeError(err.message, 500);
+  }
+
   if (err instanceof OpenAI.APIError) {
     if (err.status === 401) {
       return new ForgeError("Provider rejected the API key (401).", 502);
@@ -252,9 +270,7 @@ function readForge(
  * bounded repair pass when the returned prompt is missing contract sections.
  * All of it shares a single deadline.
  */
-export async function forgePrompt(input: ForgeRequest): Promise<ParsedForge> {
-  const client = getClient();
-  const model = resolveModel();
+export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
   const userMessage = buildUserMessage(input);
   const timeoutMs = resolveTimeoutMs();
 
@@ -266,31 +282,41 @@ export async function forgePrompt(input: ForgeRequest): Promise<ParsedForge> {
     { role: "user", content: userMessage },
   ];
 
-  const callOnce = async (
-    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  ) => {
-    const params = {
-      model,
-      temperature: 0.7,
-      max_tokens: 2_400,
-      messages,
-    };
-    try {
-      return await client.chat.completions.create(
-        { ...params, response_format: { type: "json_object" as const } },
-        { signal: controller.signal },
-      );
-    } catch (err) {
-      // Some OpenAI-compatible providers reject response_format outright.
-      if (!isUnsupportedParam(err)) throw err;
-      return await client.chat.completions.create(params, {
-        signal: controller.signal,
-      });
-    }
-  };
-
   try {
-    let result = readForge(await callOnce(baseMessages));
+    // Resolved inside the try so a missing env var becomes a clean 500 that
+    // names the variable, not an unhandled throw.
+    const resolved = resolveProvider(input.provider, input.model);
+    const client = getClient(resolved);
+    const model = resolved.model;
+
+    const callOnce = async (
+      messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+    ) => {
+      const params = {
+        model,
+        temperature: 0.7,
+        max_tokens: 2_400,
+        messages,
+      };
+      try {
+        return await client.chat.completions.create(
+          { ...params, response_format: { type: "json_object" as const } },
+          { signal: controller.signal },
+        );
+      } catch (err) {
+        // Some OpenAI-compatible providers reject response_format outright.
+        if (!isUnsupportedParam(err)) throw err;
+        return await client.chat.completions.create(params, {
+          signal: controller.signal,
+        });
+      }
+    };
+
+    let result: ForgeResult = {
+      ...readForge(await callOnce(baseMessages)),
+      provider: resolved.provider.id,
+      model,
+    };
 
     const missing = missingContract(result.prompt);
     if (missing.length > 0) {
@@ -310,7 +336,7 @@ export async function forgePrompt(input: ForgeRequest): Promise<ParsedForge> {
 
       const repaired = readForge(await callOnce(repairMessages));
       if (missingContract(repaired.prompt).length <= missing.length) {
-        result = repaired;
+        result = { ...repaired, provider: resolved.provider.id, model };
       } else {
         result.notes = [
           ...result.notes,

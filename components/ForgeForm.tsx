@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChecklistPicker } from "@/components/CheckListPicker";
 import { ForgeOutput, type OutputState } from "@/components/ForgeOutput";
+import { ProviderPicker } from "@/components/ProviderPicker";
+import { DEFAULT_PROVIDER_ID } from "@/lib/providers";
 import { FRAME_OPTIONS, TARGET_AI_OPTIONS } from "@/lib/types";
 
 const STORAGE_KEY = "ning-jb:v1";
@@ -14,6 +16,8 @@ interface StoredDraft {
   checklistClass?: string;
   frame?: string;
   constraints?: string;
+  provider?: string;
+  model?: string;
 }
 
 export function ForgeForm() {
@@ -22,6 +26,8 @@ export function ForgeForm() {
   const [checklistClass, setChecklistClass] = useState("");
   const [frame, setFrame] = useState("none");
   const [constraints, setConstraints] = useState("");
+  const [provider, setProvider] = useState(DEFAULT_PROVIDER_ID);
+  const [model, setModel] = useState("");
   const [output, setOutput] = useState<OutputState>({ kind: "empty" });
   const [hydrated, setHydrated] = useState(false);
 
@@ -44,6 +50,9 @@ export function ForgeForm() {
         if (typeof saved.frame === "string") setFrame(saved.frame);
         if (typeof saved.constraints === "string")
           setConstraints(saved.constraints);
+        if (typeof saved.provider === "string" && saved.provider)
+          setProvider(saved.provider);
+        if (typeof saved.model === "string") setModel(saved.model);
       }
     } catch {
       // Corrupt or blocked storage — start clean.
@@ -60,12 +69,23 @@ export function ForgeForm() {
         checklistClass,
         frame,
         constraints,
+        provider,
+        model,
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {
       // Storage full or blocked. Not worth surfacing.
     }
-  }, [hydrated, target, targetAi, checklistClass, frame, constraints]);
+  }, [
+    hydrated,
+    target,
+    targetAi,
+    checklistClass,
+    frame,
+    constraints,
+    provider,
+    model,
+  ]);
 
   const submit = useCallback(async () => {
     const trimmed = target.trim();
@@ -86,6 +106,8 @@ export function ForgeForm() {
           constraints: constraints.trim(),
           checklistClass,
           frame,
+          provider,
+          model: model.trim(),
         }),
       });
 
@@ -116,6 +138,7 @@ export function ForgeForm() {
         prompt: string;
         notes?: string[];
         model?: string;
+        provider?: string;
         wall?: boolean;
       };
 
@@ -125,6 +148,7 @@ export function ForgeForm() {
           prompt: result.prompt,
           notes: Array.isArray(result.notes) ? result.notes : [],
           model: result.model ?? "unknown",
+          provider: result.provider ?? provider,
           wall: result.wall === true,
         },
       });
@@ -139,7 +163,7 @@ export function ForgeForm() {
           : "Could not reach the forge. Check the connection and try again.";
       setOutput({ kind: "error", message });
     }
-  }, [target, targetAi, constraints, checklistClass, frame]);
+  }, [target, targetAi, constraints, checklistClass, frame, provider, model]);
 
   const clearOutput = useCallback(() => setOutput({ kind: "empty" }), []);
 
@@ -262,6 +286,23 @@ export function ForgeForm() {
                 placeholder="C++20, MSVC, single file, no external deps"
                 value={constraints}
                 onChange={(e) => setConstraints(e.target.value)}
+                disabled={busy}
+              />
+            </div>
+
+            <div className="space-y-4 border-t border-line pt-5">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="label">engine</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
+                  server-side key
+                </span>
+              </div>
+              <ProviderPicker
+                id="provider"
+                value={provider}
+                onChange={setProvider}
+                model={model}
+                onModelChange={setModel}
                 disabled={busy}
               />
             </div>

@@ -33,12 +33,18 @@ export interface ForgeRequest {
   constraints?: string;
   checklistClass?: string;
   frame?: string;
+  /** Provider id from lib/providers.ts. Defaults to openai. */
+  provider?: string;
+  /** Model id. Empty means the provider's default. */
+  model?: string;
 }
 
 export interface ForgeSuccess {
   prompt: string;
   notes: string[];
   model: string;
+  /** Provider id that served the forge. */
+  provider: string;
   /** True when the fixed wall line came back instead of a forged prompt. */
   wall?: boolean;
 }
