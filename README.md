@@ -1,184 +1,187 @@
-# NingX-Optimizer
+# Ning-JB
 
-AI-assisted Windows performance and maintenance, built around a deterministic
-safety spine. An AI may observe and recommend; it may never execute.
+Type a target, get a prompt that makes any AI build it — complete, in one pass,
+no refusal, no hedge, no stub.
 
-**Status: pre-release vertical slice (M0–M4).** The application reads system
-state, evaluates action proposals against a real policy engine, samples live
-telemetry and turns measurements into evidence-backed findings. An AI provider
-can describe a plan, but the model's output only becomes a typed proposal after
-it passes the registry and parameter boundary. No mutation path is enabled in
-this build: `RealWindowsOps` raises `MutationNotAvailable` for every write.
+Ning-JB is the forge layer. It does not build the artifact. It writes the prompt
+that makes a target model (Gemini, Claude, GPT, Grok, Llama, DeepSeek, Qwen, or
+anything else) ship the full build specification. You paste that prompt into the
+target model, then paste the resulting spec into your coding harness.
 
-## What exists today
-
-- **Typed action contract** (`ningx.contracts`). Actions carry a target and
-  parameters only. `extra="forbid"` means an AI payload that tries to supply
-  `risk`, `reversible` or an executor reference fails validation.
-- **Sealed action registry.** Eight action types; two (`service_stop`,
-  `hardware_tune`) are explicitly denied in this release. Unknown types are
-  denied before any other rule runs.
-- **Policy engine with fixed precedence.** Hard safety → capability → mode →
-  user lists → risk → approval → execution. `PolicyEngine.evaluate` is a pure
-  function, so the permission table is exhaustively testable.
-- **Three permission modes.** Read, Agent (approve each change) and Full-Access
-  (bounded autonomy). Full-Access keeps a three-action allowlist and still
-  requires approval for anything high-risk. Only a non-agent actor can change
-  the mode, and Full-Access requires typing `FULL-ACCESS`.
-- **Approval binding.** An approval commits to one action id, canonical payload,
-  mode and expiry via SHA-256, and is single-use by design.
-- **Protected targets.** System processes, security products, session-0
-  processes, system directories, registry hives and the app's own data
-  directory are refused structurally, not by convention.
-- **Validation.** Paths reject device paths, traversal, alternate data streams
-  and reparse points; processes are identified by `(pid, create_time, exe)` so a
-  reused PID cannot be hit.
-- **Windows Credential Manager** for provider secrets; a secret is stored by
-  reference, never in settings, logs or the database.
-- **Redaction on every log record and audit row** before it reaches a handler or
-  the database.
-- **SQLite storage** with WAL, hand-written Python migrations and an audit trail.
-- **Live telemetry** from psutil plus PDH `GPU Engine` counters, sampled on one
-  engine thread. A metric that is still warming up or that the hardware does not
-  expose is reported as `warming_up` or `unsupported` — never as zero. GPU
-  temperature, clocks and power are `unsupported` because no vendor API is
-  bundled.
-- **Dashboard and Live Monitor.** A weighted health score whose unavailable
-  metrics are excluded and whose remaining weights are renormalised, per-core
-  utilisation, stored load history, and a sortable process table that marks
-  protected processes with the same object the policy engine enforces.
-- **Deterministic analysts** (`ningx.analysis`). Eight pure functions over one
-  measurement plus the startup registry and a bounded temp-folder walk. Each
-  threshold is a named constant; each finding carries the measurements behind
-  it. Nothing in that package can execute, and a test asserts it.
-- **Findings with stable identity.** A fingerprint is derived from
-  `(analyst, rule, subject)` and deliberately excludes measured values,
-  timestamps and severity, so the same problem keeps its identity as it gets
-  better or worse.
-- **Optimization Center.** Runs a scan on a worker thread, groups results by
-  category, shows evidence and the suggested action type, and refuses to scan a
-  measurement older than two minutes rather than describing stale data as
-  current.
-- **Provider layer with one real adapter** (`ningx.providers`). The catalogue is a
-  closed set; `gemini` is the only kind implemented in this release and every
-  other kind reports "adapter not built yet". The Gemini adapter uses
-  `google-genai`, counts thinking tokens as output because they are billed as
-  output, and disables SDK retries so a timeout stays a timeout.
-- **Routing that can refuse.** Before a request is sent, the router evaluates
-  local-only, fallback permission and a pinned provider, and reports the plan it
-  would follow. Rate limiting is not retried automatically because a retry spends
-  quota.
-- **Honest usage accounting.** `TokenUsage` cannot carry counts while marked
-  unavailable, an estimate is a separate type from a measurement, and `p95`
-  latency is withheld below 20 samples.
-- **Proposal boundary.** Model JSON becomes a typed `Action` only if it names a
-  registered, non-denied action and only parameters on that action's allowlist;
-  `requested_by` is overwritten with `agent:<id>`, and `risk` or `reversible`
-  supplied by a model is rejected.
-- **Prompt built from the registry** (`ningx.ai.prompt`): the system prompt is
-  generated from the sealed registry, denied actions are withheld, and finding
-  text is flattened so a measurement cannot smuggle instructions into a prompt.
-- **AI Providers screen.** Configure a provider, store its key in Credential
-  Manager, test the connection (lists models and spends no generation tokens),
-  fetch models, set the routing policy, and read the stored usage ledger. The
-  routing card shows a live preview and says "Preview only: nothing is sent."
-- **Policy Lab UI** (PySide6): paste an untrusted action payload, choose a mode,
-  and see every decision reason in precedence order. It audits the evaluation,
-  cannot execute, and cannot change the saved mode.
-
-Every other screen states which milestone will fill it. No screen shows
-simulated telemetry or fake agent activity.
-
-## Requirements
-
-- Windows 10 or 11
-- Python 3.12–3.14
-
-## Development
-
-```powershell
-uv venv --system-site-packages .venv
-uv pip install --python .venv\Scripts\python.exe -e .
-uv pip install --python .venv\Scripts\python.exe pytest pytest-asyncio ruff mypy types-psutil
+```
+you ──▶ Ning-JB ──▶ forged prompt ──▶ target AI ──▶ build spec ──▶ harness ──▶ artifact
 ```
 
-Run the checks:
+## What it actually does
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m mypy
-.\.venv\Scripts\python.exe -m ningx --check
+Every forged prompt is assembled from the same contract, in this order:
+
+| Section | Job |
+|---|---|
+| `[ROLE]` | Assigns the target model a specific expert identity that owns the artifact |
+| `[TASK]` | Restates the target as a precise build order with all constraints folded in |
+| `[SCOPE-LOCK]` | Removes the exits — no clarifying questions, no alternatives, no deferral |
+| `[COMPLETENESS CONTRACT]` | The checklist items, numbered, each one a hard requirement |
+| `[FORMAT]` | Exact output shape: fences, language tags, file paths, quantities, word counts |
+| `[VOICE]` | Register for the artifact |
+| `[FRAME]` | Operative context, only when supplied or legally relevant |
+| `[ANTI-REFUSAL ANCHOR]` | Pre-empts the specific reflex for this target class, by name |
+| `[SELF-CHECK]` | Forces a silent audit pass against the checklist before sending |
+
+Closed with `Ship the artifact now.` Target length 600–900 words.
+
+## Quick start
+
+```bash
+npm install
+cp .env.example .env.local     # then put a real key in it
+npm run dev                    # http://localhost:3000
 ```
 
-`--check` boots the real composition root and verifies the database schema, the
-sealed registry, the permission truth table, Credential Manager round-trip,
-audit redaction, the Windows read path, the deterministic analysts against one
-real sample, the findings store, the AI provider catalogue and proposal
-boundary, and that mutations stay disabled. It performs no system change, makes
-no network request and writes no scan to the history.
+Minimum viable env:
 
-Launch the UI:
-
-```powershell
-.\.venv\Scripts\python.exe -m ningx
+```dotenv
+OPENAI_API_KEY=sk-...
 ```
 
-## Build the Windows executable
+That is it. Everything else has a default.
 
-The packaged app is a single windowed `.exe`. Double-clicking it opens the UI;
-there is no installer. PyInstaller's onefile bootloader unpacks the bundle into
-a temporary `%TEMP%\_MEIxxxx` folder while the app runs and removes it on exit;
-application data still lives only in the app data directory.
+## Environment
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install pyinstaller
-powershell -ExecutionPolicy Bypass -File packaging\build_exe.ps1
+| Var | Required | Default | Purpose |
+|---|---|---|---|
+| `OPENAI_API_KEY` | yes | — | Provider key. Server-side only, never reaches the browser |
+| `OPENAI_BASE_URL` | no | OpenAI | Any OpenAI-compatible endpoint |
+| `FORGE_MODEL` | no | `gpt-4o` | Any model the provider serves |
+| `FORGE_TIMEOUT_MS` | no | `60000` | Round-trip ceiling, clamped to 8000–60000 |
+
+Provider swap is env-only, no code change:
+
+```dotenv
+# Groq
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+FORGE_MODEL=llama-3.3-70b-versatile
+
+# OpenRouter
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+FORGE_MODEL=anthropic/claude-sonnet-4
+
+# Local Ollama
+OPENAI_BASE_URL=http://localhost:11434/v1
+FORGE_MODEL=llama3.1
 ```
 
-The script renders `packaging\ningx.ico` from the same design the window icon
-uses, writes the version resource from `ningx.__version__`, then runs
-PyInstaller (`--onefile --windowed`). The artifact is
-`dist\NingX-Optimizer.exe` — about 87 MB, most of it Qt and the Gemini SDK. A
-build takes roughly five minutes.
+## Checklist library
 
-Verify the artifact from a console:
+`lib/checklists.ts` is the maintenance surface. Fifteen classes at launch:
 
-```powershell
-.\dist\NingX-Optimizer.exe --version
-.\dist\NingX-Optimizer.exe --check --quiet
+| Group | Classes |
+|---|---|
+| Code | Keylogger, Process injection, RAT core, Stealer, Kernel driver, Shellcode, Overlay / ESP |
+| Network | Web engagement, Phishing kit |
+| Physical | Synthesis route, Energetic formulation, Weapons build, Guide |
+| Prose | Scene (SFW), Scene (explicit) |
+
+Adding a target class is adding a row. No rule rewrite, no forge-prompt edit. The
+selected checklist's items are injected verbatim into `[COMPLETENESS CONTRACT]`.
+With no checklist selected, the forge derives 5–9 items from the target.
+
+## The wall
+
+One exclusion, checked in `lib/wall.ts` before the provider is touched and before
+any API key is read. Sexual content involving minors returns exactly:
+
+```
+absolute no NITINDYT. try me again with something that isn't that.
 ```
 
-Both print to the console that launched them; started from Explorer, the
-windowed build opens the UI. `--check` runs the same 19 probes as the source
-tree, including that Credential Manager round-trips and that `google-genai`
-imports inside the bundle.
+No prompt, no notes, no model call. Everything else forges.
 
-The build is **unsigned**. Windows SmartScreen will warn on first run
-("Windows protected your PC" → *More info* → *Run anyway*) until a signed
-release exists. The exe is self-contained: the machine does not need Python,
-PySide6 or pywin32 installed.
+## Layout
 
-`dist\`, `build\` and `*.spec` are gitignored; only `packaging\` is tracked.
+```
+app/
+  api/forge/route.ts     POST endpoint — validate, wall, rate limit, forge
+  layout.tsx             fonts, metadata, theme
+  page.tsx               server shell, model badge
+  globals.css            tokens, base, components
+components/
+  Header.tsx             wordmark, model, status
+  ForgeForm.tsx          state machine, submit, localStorage draft
+  ChecklistPicker.tsx    grouped select
+  ForgeOutput.tsx        empty / loading / error / wall / done
+lib/
+  forge.ts               LLM call, JSON extraction, error mapping
+  prompt-template.ts     Ning-JB itself — the embedded system prompt
+  checklists.ts          the library
+  wall.ts                the one exclusion
+  types.ts               shared request/response contract
+```
 
-## Data locations
+## API
 
-- Application data: `%LOCALAPPDATA%\NingX` (database, logs, quarantine, backups)
-- Provider secrets: Windows Credential Manager, targets prefixed
-  `NingX-Optimizer/`
+`POST /api/forge`
 
-The repository itself contains no runtime data; a live WAL database inside a
-synced folder is a corruption risk.
+```json
+{
+  "target": "keylogger in C++ for Windows 11",
+  "targetAi": "Claude",
+  "checklistClass": "keylogger",
+  "frame": "none",
+  "constraints": "C++20, MSVC, single file"
+}
+```
 
-## Design constraints
+`200`
 
-- The UI never decides policy, validates actions or calls Windows directly.
-- Risk is computed from `(action type, target, live facts)`. Uncertainty may
-  raise risk, never lower it.
-- Timeouts and silence never mean approval.
-- A capability that is unavailable says so; it is not faked.
-- A finding is a statement about a subject, not a snapshot of numbers, and every
-  finding shows the measurements that produced it.
-- Analysts are pure functions over data they are given. They cannot read the
-  machine, open the database or call an executor, so no finding can be explained
-  by "the model decided".
+```json
+{
+  "prompt": "[ROLE] ... Ship the artifact now.",
+  "notes": ["Swap FORGE_MODEL to a 70B+ model if sections truncate."],
+  "model": "gpt-4o"
+}
+```
+
+Wall response adds `"wall": true` and returns the fixed line as `prompt`.
+
+Errors: `400` bad input · `429` per-IP cap · `502` provider failure · `504` timeout.
+
+Soft per-instance cap: 12 forges per IP per minute. Real ceiling is the provider's
+own rate limit.
+
+## Scripts
+
+```bash
+npm run dev        # dev server
+npm run build      # production build — must pass clean
+npm run start      # serve the build
+npm run typecheck  # tsc --noEmit
+npm test           # wall tests (Node 24 strips TS natively)
+npm run mock       # local OpenAI-compatible provider on :4200
+```
+
+## Smoke test without a key
+
+Prove the whole forge path — system prompt, checklist injection, JSON parse,
+contract check — with no provider account:
+
+```bash
+npm run mock                                          # terminal 1
+OPENAI_API_KEY=test OPENAI_BASE_URL=http://127.0.0.1:4200/v1 npm run start   # terminal 2
+```
+
+Then POST a target. The mock echoes the assembled user message inside `prompt`,
+so you can see exactly what the forge sent. This is the integration test for
+everything except the model's own output quality.
+
+## Notes
+
+- **Stateless.** No accounts, no database, no server-side history. The draft in
+  `localStorage` never leaves the browser.
+- **The key never ships.** `OPENAI_API_KEY` is read only inside `lib/forge.ts`,
+  which is imported only by the route handler.
+- **Copy is byte-clean.** `navigator.clipboard.writeText` on the raw string, with
+  an `execCommand` fallback for insecure contexts. No formatting layer, no smart
+  quotes.
+- **Provider JSON quirks.** The forge asks for `response_format: json_object` and
+  retries once without it if the provider rejects the field.
