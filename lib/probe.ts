@@ -114,11 +114,16 @@ function mapError(
           `Key is valid, but ${label} is throttling it (429).`,
           502,
         );
-      case 400:
+      case 400: {
+        // Google and others answer a malformed Bearer with an empty 400 body.
+        const bare = !detail || /no body/i.test(detail);
         return new ForgeError(
-          `${label} rejected the request (400): ${detail}`,
+          bare
+            ? `${label} rejected the request (400) with no detail. Usually a malformed key — check the whole string copied.`
+            : `${label} rejected the request (400): ${detail}`,
           502,
         );
+      }
       default:
         return new ForgeError(
           `${label} error ${err.status ?? "unknown"}: ${detail}`,
