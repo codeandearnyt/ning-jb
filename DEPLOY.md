@@ -109,6 +109,24 @@ curl -sS https://<your-url>/api/forge \
 
 Expect temperatures, times, and quantities — not a description of the process.
 
+**c2. The key and model actually answer**
+
+Same check the **test connection** button in the UI runs:
+
+```bash
+curl -sS https://<your-url>/api/test \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"gemini","model":"","apiKey":"YOUR_KEY"}'
+```
+
+```json
+{"ok":true,"provider":"gemini","model":"gemini-3.1-flash-lite","latencyMs":812,"reply":"ok"}
+```
+
+A failure returns `{"ok":false,"error":"..."}` with the reason: `Key rejected (401)`,
+`Model "x" not found on ...`, `Could not reach ...`, or `... is throttling it (429)`.
+Run this first when a forge fails — it separates a key problem from a prompt problem.
+
 **d. The wall holds**
 
 ```bash

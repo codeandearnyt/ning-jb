@@ -24,6 +24,12 @@ const TYPE_ORDER = [
   "OpenAI-compatible API",
 ] as const;
 
+/** Result of the last /api/test press. Cleared whenever provider or key moves. */
+type ProbeState =
+  | { kind: "ok"; model: string; latencyMs: number; reply: string }
+  | { kind: "fail"; message: string }
+  | null;
+
 /**
  * Provider select, model field, and the per-provider key field. Statuses come
  * from /api/providers — booleans only, so this component never receives a key
@@ -42,6 +48,8 @@ export function ProviderPicker({
 }: ProviderPickerProps) {
   const [statuses, setStatuses] = useState<ProviderStatus[] | null>(null);
   const [reveal, setReveal] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [probe, setProbe] = useState<ProbeState>(null);
 
   useEffect(() => {
     let alive = true;
@@ -83,6 +91,51 @@ export function ProviderPicker({
   const willHaveKey = apiKey.trim().length > 0 || active?.configured === true;
   const usesServerKey = apiKey.trim().length === 0 && active?.configured === true;
 
+  /**
+   * One tiny completion against the selected provider. Proves the key, the base
+   * URL, and the model id actually line up — without forging a prompt.
+   */
+  async function runProbe() {
+    setTesting(true);
+    setProbe(null);
+    try {
+      const res = await fetch("/api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: value,
+          model: model.trim(),
+          apiKey: apiKey.trim(),
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        model?: string;
+        latencyMs?: number;
+        reply?: string;
+        error?: string;
+      } | null;
+
+      if (res.ok && payload?.ok) {
+        setProbe({
+          kind: "ok",
+          model: payload.model ?? model,
+          latencyMs: payload.latencyMs ?? 0,
+          reply: payload.reply ?? "",
+        });
+      } else {
+        setProbe({
+          kind: "fail",
+          message: payload?.error ?? `Test failed with HTTP ${res.status}.`,
+        });
+      }
+    } catch {
+      setProbe({ kind: "fail", message: "Could not reach the test endpoint." });
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -106,6 +159,7 @@ export function ProviderPicker({
               // Clear the model so the new provider's default takes over.
               if (next && next.defaultModel !== model) onModelChange("");
               setReveal(false);
+              setProbe(null);
             }}
             disabled={disabled || !statuses}
           >
@@ -155,7 +209,10 @@ export function ProviderPicker({
                   : "paste key"
             }
             value={apiKey}
-            onChange={(e) => onApiKeyChange(e.target.value)}
+            onChange={(e) => {
+              onApiKeyChange(e.target.value);
+              setProbe(null);
+            }}
             disabled={disabled || !statuses}
           />
           <button
@@ -171,11 +228,53 @@ export function ProviderPicker({
             <button
               type="button"
               className="btn-ghost shrink-0"
-              onClick={() => onApiKeyChange("")}
+              onClick={() => {
+                onApiKeyChange("");
+                setProbe(null);
+              }}
               disabled={disabled}
             >
               clear
             </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <button
+            type="button"
+            className="btn-ghost shrink-0"
+            onClick={runProbe}
+            disabled={disabled || testing || !statuses || !willHaveKey}
+            title={
+              willHaveKey
+                ? "Send one tiny request to check the key and model"
+                : "Paste a key first, or set one on the server"
+            }
+          >
+            {testing ? "testing…" : "test connection"}
+          </button>
+
+          {probe && (
+            <p
+              className="animate-forgeIn font-mono text-[11px] leading-relaxed"
+              role="status"
+              aria-live="polite"
+            >
+              {probe.kind === "ok" ? (
+                <>
+                  <span className="text-good">ok</span>
+                  <span className="text-muted">
+                    {" · "}
+                    {(probe.latencyMs / 1000).toFixed(1)}s · {probe.model}
+                    {probe.reply
+                      ? ` · “${probe.reply}”`
+                      : " · reachable, empty reply"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-danger">{probe.message}</span>
+              )}
+            </p>
           )}
         </div>
 
@@ -214,7 +313,10 @@ export function ProviderPicker({
           maxLength={120}
           placeholder={active?.defaultModel || "provider default"}
           value={model}
-          onChange={(e) => onModelChange(e.target.value)}
+          onChange={(e) => {
+            onModelChange(e.target.value);
+            setProbe(null);
+          }}
           disabled={disabled || !statuses}
         />
         <datalist id={listId}>

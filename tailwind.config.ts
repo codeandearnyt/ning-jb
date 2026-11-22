@@ -18,6 +18,7 @@ const config: Config = {
         heat: "rgb(var(--heat) / <alpha-value>)",
         hot: "rgb(var(--hot) / <alpha-value>)",
         danger: "rgb(var(--danger) / <alpha-value>)",
+        good: "rgb(var(--good) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

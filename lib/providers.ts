@@ -244,7 +244,10 @@ export function resolveProvider(
   let baseUrl = provider.baseUrl;
   if (provider.urlVars) {
     for (const [placeholder, envName] of Object.entries(provider.urlVars)) {
-      if (!baseUrl.includes(`{${placeholder}}`)) continue;
+      const token = `{${placeholder}}`;
+      // An empty base URL means the whole URL comes from one variable — the
+      // custom-integration case, where there is no template to fill.
+      if (baseUrl && !baseUrl.includes(token)) continue;
       const value =
         process.env[envName]?.trim() ||
         (placeholder === "gateway_id" ? "default" : "");
@@ -253,7 +256,7 @@ export function resolveProvider(
           `${provider.label} needs ${envName} on the server.`,
         );
       }
-      baseUrl = baseUrl.replaceAll(`{${placeholder}}`, value);
+      baseUrl = baseUrl ? baseUrl.replaceAll(token, value) : value;
     }
   }
   // Backward compatibility: the original single-provider deploy used

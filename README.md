@@ -66,6 +66,10 @@ The picker is BYOK-first:
 - The key is sent in the request body over TLS, used for one call, and scrubbed
   from any error message before it reaches the browser.
 - It is never logged, never stored server-side, and never returned.
+- **Test connection** sends one tiny request (32 tokens) to the selected
+  provider and reports the measured latency — or the exact reason it failed:
+  key rejected, model id not found, host unreachable, throttled. It never
+  forges a prompt and never falls back to a different provider.
 
 That makes the public deploy safe to share: nobody's quota is on the line except
 the person typing the key.
