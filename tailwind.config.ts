@@ -26,10 +26,13 @@ const config: Config = {
       },
       borderRadius: {
         none: "0",
-        sm: "2px",
-        DEFAULT: "2px",
-        md: "3px",
-        lg: "4px",
+        sm: "6px",
+        DEFAULT: "8px",
+        md: "10px",
+        lg: "14px",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgb(26 16 22 / 0.04), 0 18px 40px -24px rgb(190 24 93 / 0.28)",
       },
       keyframes: {
         forgeIn: {

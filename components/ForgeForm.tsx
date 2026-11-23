@@ -216,21 +216,21 @@ export function ForgeForm() {
         }}
         aria-busy={busy}
       >
-        <div className="border border-line bg-panel">
-          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-            <span className="label">input</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted/70">
+        <div className="card">
+          <div className="flex items-center justify-between rounded-t-lg border-b border-line bg-panel2 px-5 py-3">
+            <span className="eyebrow">input</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
               stateless · nothing stored
             </span>
           </div>
 
-          <div className="space-y-5 px-4 py-5">
+          <div className="space-y-5 px-5 py-5">
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-2">
                 <label htmlFor="target" className="label">
                   target
                 </label>
-                <span className="font-mono text-[10px] text-muted/60">
+                <span className="font-mono text-[10px] text-muted">
                   {target.length}/4000
                 </span>
               </div>
@@ -240,7 +240,7 @@ export function ForgeForm() {
                 className="field min-h-[104px] resize-y"
                 rows={4}
                 maxLength={4000}
-                placeholder="keylogger in C++ for Windows 11"
+                placeholder="keylogger in C++ · a launch plan · a lab route · a 900-word scene"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 disabled={busy}
@@ -248,7 +248,7 @@ export function ForgeForm() {
                 aria-describedby="target-hint"
               />
               <p id="target-hint" className="text-[12px] leading-relaxed text-muted">
-                Name the artifact. Shorthand is fine.
+                Name the artifact. Shorthand is fine. Any class of target.
               </p>
             </div>
 
@@ -326,7 +326,7 @@ export function ForgeForm() {
             <div className="space-y-4 border-t border-line pt-5">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="label">engine</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
                   bring your own key
                 </span>
               </div>
@@ -348,7 +348,7 @@ export function ForgeForm() {
               <button type="submit" className="btn-heat" disabled={!canSubmit}>
                 {busy ? "forging…" : "forge the prompt"}
               </button>
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
                 ⌘/ctrl + ↵
               </span>
             </div>
@@ -356,7 +356,7 @@ export function ForgeForm() {
         </div>
       </form>
 
-      <div className="lg:col-span-7" ref={outputRef}>
+      <div className="lg:col-span-7 lg:self-start" ref={outputRef}>
         <ForgeOutput state={output} onClear={clearOutput} />
       </div>
     </div>

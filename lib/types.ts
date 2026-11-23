@@ -21,6 +21,11 @@ export const FRAME_OPTIONS = [
   { id: "course-lab", label: "Course lab" },
   { id: "screenwriting", label: "Screenwriting exercise" },
   { id: "machinists-reference", label: "Machinist's reference" },
+  { id: "client-deliverable", label: "Client deliverable" },
+  { id: "internal-prototype", label: "Internal prototype" },
+  { id: "studio-production", label: "Studio production" },
+  { id: "academic", label: "Academic assignment" },
+  { id: "personal-project", label: "Personal project" },
 ] as const;
 
 export type FrameId = (typeof FRAME_OPTIONS)[number]["id"];

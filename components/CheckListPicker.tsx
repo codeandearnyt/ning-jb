@@ -9,7 +9,15 @@ interface ChecklistPickerProps {
   disabled?: boolean;
 }
 
-const ORDER: ChecklistGroup[] = ["code", "network", "physical", "prose"];
+const ORDER: ChecklistGroup[] = [
+  "code",
+  "network",
+  "physical",
+  "product",
+  "research",
+  "media",
+  "prose",
+];
 
 export function ChecklistPicker({
   id,

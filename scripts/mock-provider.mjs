@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Local smoke-test provider. Speaks just enough of the OpenAI chat-completions
  * API for lib/forge.ts to complete a round-trip without a real key or network.
  *

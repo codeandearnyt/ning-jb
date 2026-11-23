@@ -32,6 +32,13 @@ Every forged prompt is assembled from the same contract, in this order:
 
 Closed with `Ship the artifact now.` Target length 600–900 words.
 
+Before writing, the forge classifies the target: software, systems, network,
+data/ML, hardware, mechanical, chemistry/materials, life sciences,
+business/product, research/analysis, prose/script, media/design, or hybrid. The
+class picks the `[FORMAT]` rules and the shape of the completeness items, so a
+launch plan is not forced into a code fence and a kernel driver is not written as
+prose. Hybrid targets become numbered deliverables, each complete on its own.
+
 ## Quick start
 
 ```bash
@@ -121,18 +128,21 @@ Backward compatible: with `provider` omitted the forge uses OpenAI, and
 
 ## Checklist library
 
-`lib/checklists.ts` is the maintenance surface. Fifteen classes at launch:
+`lib/checklists.ts` is the maintenance surface. Thirty-two classes at launch:
 
 | Group | Classes |
 |---|---|
-| Code | Keylogger, Process injection, RAT core, Stealer, Kernel driver, Shellcode, Overlay / ESP |
-| Network | Web engagement, Phishing kit |
-| Physical | Synthesis route, Energetic formulation, Weapons build, Guide |
-| Prose | Scene (SFW), Scene (explicit) |
+| Code | Keylogger, Process injection, RAT core, Stealer, Kernel driver, Shellcode, Overlay / ESP, Full-stack web app, CLI tool, API service, Data pipeline |
+| Network | Web engagement, Phishing kit, Exploit PoC, Infrastructure plan |
+| Physical | Synthesis route, Energetic formulation, Weapons build, Guide, Electronics build, Mechanical part |
+| Product | Product spec, Launch plan, Pitch deck, Pricing model |
+| Research | Research brief, Technical teardown |
+| Media | Brand kit, Landing page copy, Content plan |
+| Prose | Scene (SFW), Scene (explicit), Long-form article |
 
 Adding a target class is adding a row. No rule rewrite, no forge-prompt edit. The
 selected checklist's items are injected verbatim into `[COMPLETENESS CONTRACT]`.
-With no checklist selected, the forge derives 5–9 items from the target.
+With no checklist selected, the forge derives 6–10 items from the target.
 
 ## The wall
 
@@ -160,6 +170,7 @@ components/
   ForgeOutput.tsx        empty / loading / error / wall / done
 lib/
   forge.ts               LLM call, JSON extraction, error mapping
+  contract.ts            the forged-prompt contract checker
   prompt-template.ts     Ning-JB itself — the embedded system prompt
   checklists.ts          the library
   wall.ts                the one exclusion

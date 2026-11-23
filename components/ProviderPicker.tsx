@@ -161,7 +161,7 @@ export function ProviderPicker({
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-              willHaveKey ? "bg-heat" : "bg-muted/40"
+              willHaveKey ? "bg-heat" : "bg-line"
             }`}
             aria-hidden="true"
           />
@@ -199,11 +199,11 @@ export function ProviderPicker({
             api key
           </label>
           {usesServerKey ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-heat/80">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-heat">
               server key in use
             </span>
           ) : (
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted/60">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
               this browser only
             </span>
           )}
@@ -296,7 +296,7 @@ export function ProviderPicker({
           Sent with the forge request, used for that call, never stored on the
           server.
           {active && !active.configured && active.missing.length > 0 && (
-            <span className="mt-1 block font-mono text-[11px] text-muted/70">
+            <span className="mt-1 block font-mono text-[11px] text-muted">
               server has no key for this provider
             </span>
           )}
@@ -311,7 +311,7 @@ export function ProviderPicker({
           {active?.defaultModel && (
             <button
               type="button"
-              className="font-mono text-[10px] text-muted/70 underline-offset-2 hover:text-heat hover:underline"
+              className="font-mono text-[10px] text-muted underline-offset-2 hover:text-heat hover:underline"
               onClick={() => onModelChange("")}
               disabled={disabled || !model}
             >
@@ -342,7 +342,7 @@ export function ProviderPicker({
           <p className="text-[12px] leading-relaxed text-muted">
             {active.note}
             {active.warning && (
-              <span className="mt-1 block font-mono text-[11px] text-heat/80">
+              <span className="mt-1 block font-mono text-[11px] text-heat">
                 {active.warning}
               </span>
             )}

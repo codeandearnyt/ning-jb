@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/wall.test.mjs",
+    "test": "node --test tests/wall.test.mjs tests/forge-contract.test.mjs",
     "mock": "node scripts/mock-provider.mjs"
   },
   "dependencies": {

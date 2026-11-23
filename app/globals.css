@@ -3,18 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --bg: 9 9 11;
-  --panel: 17 17 19;
-  --panel2: 24 24 27;
-  --line: 39 39 42;
-  --ink: 244 244 245;
-  --muted: 138 138 148;
-  --heat: 245 158 11;
-  --hot: 249 115 22;
-  --danger: 248 113 113;
-  --good: 74 222 128;
+  /* Paper-white surfaces, pink ink. Every text token below clears 4.5:1 on
+     white; hierarchy comes from size and weight, never from opacity. */
+  --bg: 255 255 255;
+  --panel: 255 255 255;
+  --panel2: 253 246 249;
+  --line: 236 219 227;
+  --ink: 26 16 22;
+  --muted: 107 88 99;
+  --heat: 190 24 93;
+  --hot: 219 39 119;
+  --danger: 185 28 28;
+  --good: 4 120 87;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @layer base {
@@ -26,13 +28,18 @@
     background-color: rgb(var(--bg));
     background-image:
       radial-gradient(
-        1100px 520px at 50% 118%,
-        rgb(var(--heat) / 0.11),
-        transparent 68%
+        900px 420px at 6% -8%,
+        rgb(var(--heat) / 0.07),
+        transparent 70%
       ),
       radial-gradient(
-        760px 380px at 88% -12%,
-        rgb(var(--hot) / 0.07),
+        1100px 500px at 96% -4%,
+        rgb(var(--hot) / 0.06),
+        transparent 72%
+      ),
+      radial-gradient(
+        1200px 620px at 50% 112%,
+        rgb(var(--heat) / 0.05),
         transparent 70%
       );
     background-repeat: no-repeat;
@@ -48,25 +55,25 @@
     z-index: 0;
     pointer-events: none;
     background-image:
-      linear-gradient(to right, rgb(var(--line) / 0.55) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(var(--line) / 0.55) 1px, transparent 1px);
+      linear-gradient(to right, rgb(var(--line) / 0.9) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--line) / 0.9) 1px, transparent 1px);
     background-size: 72px 72px;
-    opacity: 0.16;
-    mask-image: radial-gradient(ellipse at 50% 0%, #000 10%, transparent 78%);
+    opacity: 0.55;
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 8%, transparent 72%);
     -webkit-mask-image: radial-gradient(
       ellipse at 50% 0%,
-      #000 10%,
-      transparent 78%
+      #000 8%,
+      transparent 72%
     );
   }
 
   ::selection {
-    background: rgb(var(--heat) / 0.32);
+    background: rgb(var(--heat) / 0.16);
     color: rgb(var(--ink));
   }
 
   *:focus-visible {
-    outline: 2px solid rgb(var(--heat) / 0.75);
+    outline: 2px solid rgb(var(--heat) / 0.65);
     outline-offset: 2px;
   }
 
@@ -80,9 +87,10 @@
   ::-webkit-scrollbar-thumb {
     background: rgb(var(--line));
     border: 2px solid rgb(var(--bg));
+    border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--muted) / 0.5);
+    background: rgb(var(--muted) / 0.45);
   }
 }
 
@@ -91,17 +99,27 @@
     @apply font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted;
   }
 
+  /* Card headers. The one place the accent runs at full strength. */
+  .eyebrow {
+    @apply font-mono text-[10.5px] uppercase tracking-[0.2em] text-heat;
+  }
+
+  .card {
+    @apply rounded-lg border border-line bg-panel shadow-card;
+  }
+
   .field {
     @apply w-full rounded-sm border border-line bg-panel px-3 py-2.5 text-sm
-      text-ink placeholder:text-muted/50 transition-colors
-      hover:border-muted/40 focus:border-heat/70 focus:outline-none;
+      text-ink placeholder:text-muted transition-colors hover:border-muted/50
+      focus:border-heat focus:outline-none focus:ring-4 focus:ring-heat/10;
   }
 
   .field-select {
     @apply w-full cursor-pointer appearance-none rounded-sm border border-line
       bg-panel py-2.5 pl-3 pr-9 text-sm text-ink transition-colors
-      hover:border-muted/40 focus:border-heat/70 focus:outline-none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%238a8a94' stroke-width='1.4'/%3E%3C/svg%3E");
+      hover:border-muted/50 focus:border-heat focus:outline-none
+      focus:ring-4 focus:ring-heat/10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%236b5863' stroke-width='1.4'/%3E%3C/svg%3E");
     background-position: right 0.75rem center;
     background-repeat: no-repeat;
   }
@@ -109,21 +127,28 @@
   .btn-heat {
     @apply relative inline-flex items-center justify-center gap-2 overflow-hidden
       rounded-sm px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em]
-      text-[#140b00] transition-transform duration-150
-      active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45
-      disabled:active:translate-y-0;
+      text-white transition-all duration-150
+      active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50
+      disabled:shadow-none disabled:active:translate-y-0;
     background-image: linear-gradient(
       100deg,
       rgb(var(--heat)) 0%,
       rgb(var(--hot)) 100%
     );
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 10px 24px -12px rgb(var(--heat) / 0.7);
+  }
+
+  .btn-heat:hover:not(:disabled) {
+    filter: saturate(1.08) brightness(1.04);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-sm border
-      border-line bg-panel2 px-3 py-1.5 font-mono text-[10.5px] uppercase
-      tracking-[0.14em] text-muted transition-colors hover:border-muted/50
-      hover:text-ink active:translate-y-px;
+      border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] uppercase
+      tracking-[0.14em] text-muted transition-colors hover:border-heat/40
+      hover:bg-heat/5 hover:text-heat active:translate-y-px;
   }
 }
 

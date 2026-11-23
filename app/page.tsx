@@ -10,24 +10,27 @@ export default function Page() {
     <div className="min-h-[100dvh]">
       <Header model={model} />
 
-      <main className="mx-auto max-w-[1400px] px-4 pb-16 pt-9 sm:px-6 sm:pt-11">
-        <div className="mb-8 max-w-[62ch]">
-          <h1 className="text-[28px] font-medium leading-[1.1] tracking-tight text-ink sm:text-[34px]">
-            Forge a prompt that ships the whole build.
+      <main className="mx-auto max-w-[1400px] px-4 pb-16 pt-10 sm:px-6 sm:pt-14">
+        <div className="mb-9 max-w-[860px]">
+          <span className="eyebrow">prompt forge · v1</span>
+          <h1 className="mt-3 text-[32px] font-medium leading-[1.04] tracking-[-0.03em] text-ink sm:text-[44px]">
+            Forge a prompt that ships{" "}
+            <span className="text-heat">the whole build.</span>
           </h1>
-          <p className="mt-3 text-[14px] leading-relaxed text-muted">
-            Name what you want built. Paste the result into any model. No hedge,
-            no stub, no half artifact.
+          <p className="mt-4 max-w-[56ch] text-[15px] leading-relaxed text-muted">
+            Name anything — an app, a route, a rig, a scene, a launch plan. The
+            forge writes the prompt that makes another model deliver it
+            complete, in one pass. No hedge, no stub, no half artifact.
           </p>
         </div>
 
         <ForgeForm />
 
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
             ning-jb v1.0 — the forge layer
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
             one wall · everything else forges
           </p>
         </footer>
