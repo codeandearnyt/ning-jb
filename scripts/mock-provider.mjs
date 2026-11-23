@@ -91,8 +91,14 @@ const server = createServer((req, res) => {
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     };
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(completion));
+    // MOCK_DELAY_MS slows the reply so the loading state can be inspected.
+    const delay = Number(process.env.MOCK_DELAY_MS ?? 0);
+    const send = () => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(completion));
+    };
+    if (delay > 0) setTimeout(send, delay);
+    else send();
   });
 });
 
