@@ -33,3 +33,7 @@ Thumbs.db
 
 .vercel
 .env*
+
+# Playwright captures land in the repo root by default.
+/live-*.png
+/pink-*.png
