@@ -6,6 +6,7 @@ import { ChecklistPicker } from "@/components/CheckListPicker";
 import { ForgeOutput, type OutputState } from "@/components/ForgeOutput";
 import { ProviderPicker } from "@/components/ProviderPicker";
 import { DEFAULT_PROVIDER_ID } from "@/lib/providers";
+import type { ProviderStatus } from "@/lib/providers";
 import { FRAME_OPTIONS, TARGET_AI_OPTIONS } from "@/lib/types";
 
 const STORAGE_KEY = "ning-jb:v1";
@@ -21,7 +22,7 @@ interface StoredDraft {
   model?: string;
 }
 
-export function ForgeForm() {
+export function ForgeForm({ providers }: { providers: ProviderStatus[] }) {
   const [target, setTarget] = useState("");
   const [targetAi, setTargetAi] = useState("");
   const [checklistClass, setChecklistClass] = useState("");
@@ -340,6 +341,7 @@ export function ForgeForm() {
                 onApiKeyChange={(v) =>
                   setKeys((prev) => ({ ...prev, [provider]: v }))
                 }
+                statuses={providers}
                 disabled={busy}
               />
             </div>

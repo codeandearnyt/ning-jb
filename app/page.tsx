@@ -1,10 +1,14 @@
 import { ForgeForm } from "@/components/ForgeForm";
 import { Header } from "@/components/Header";
+import { providerStatuses } from "@/lib/providers";
 
 export const dynamic = "force-dynamic";
 
 export default function Page() {
   const model = process.env.FORGE_MODEL?.trim() || "gpt-4o";
+  // Rendered on the server so the provider select is usable on first paint —
+  // no client fetch, no disabled control while a cold function wakes up.
+  const providers = providerStatuses();
 
   return (
     <div className="min-h-[100dvh]">
@@ -24,7 +28,7 @@ export default function Page() {
           </p>
         </div>
 
-        <ForgeForm />
+        <ForgeForm providers={providers} />
 
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">

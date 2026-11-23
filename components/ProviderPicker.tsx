@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ProviderStatus } from "@/lib/providers";
 
@@ -12,6 +12,8 @@ interface ProviderPickerProps {
   onModelChange: (value: string) => void;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
+  /** Server-rendered provider registry. Never a key — booleans and names only. */
+  statuses: ProviderStatus[];
   disabled?: boolean;
 }
 
@@ -31,10 +33,10 @@ type ProbeState =
   | null;
 
 /**
- * Provider select, model field, and the per-provider key field. Statuses come
- * from /api/providers — booleans only, so this component never receives a key
- * from the server. The key the user types here stays in their browser until it
- * is sent with a forge request.
+ * Provider select, model field, and the per-provider key field. Statuses are
+ * rendered on the server and passed down — booleans only, so this component
+ * never receives a key from the server. The key the user types here stays in
+ * their browser until it is sent with a forge request.
  */
 export function ProviderPicker({
   id,
@@ -44,45 +46,26 @@ export function ProviderPicker({
   onModelChange,
   apiKey,
   onApiKeyChange,
+  statuses,
   disabled,
 }: ProviderPickerProps) {
-  const [statuses, setStatuses] = useState<ProviderStatus[] | null>(null);
   const [reveal, setReveal] = useState(false);
   const [testing, setTesting] = useState(false);
   const [probe, setProbe] = useState<ProbeState>(null);
 
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/providers")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((payload: unknown) => {
-        if (!alive) return;
-        const list =
-          payload && typeof payload === "object" && "providers" in payload
-            ? (payload as { providers: unknown }).providers
-            : null;
-        if (Array.isArray(list)) setStatuses(list as ProviderStatus[]);
-      })
-      .catch(() => {
-        // Status is decoration. The forge still works without it.
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   const active = useMemo(
-    () => statuses?.find((p) => p.id === value) ?? null,
+    () => statuses.find((p) => p.id === value) ?? null,
     [statuses, value],
   );
 
-  const grouped = useMemo(() => {
-    if (!statuses) return [];
-    return TYPE_ORDER.map((type) => ({
-      type,
-      items: statuses.filter((p) => p.type === type),
-    })).filter((g) => g.items.length > 0);
-  }, [statuses]);
+  const grouped = useMemo(
+    () =>
+      TYPE_ORDER.map((type) => ({
+        type,
+        items: statuses.filter((p) => p.type === type),
+      })).filter((g) => g.items.length > 0),
+    [statuses],
+  );
 
   const suggestions = active?.suggestedModels ?? [];
   const listId = `${id}-models`;
@@ -171,15 +154,14 @@ export function ProviderPicker({
             value={value}
             onChange={(e) => {
               onChange(e.target.value);
-              const next = statuses?.find((p) => p.id === e.target.value);
+              const next = statuses.find((p) => p.id === e.target.value);
               // Clear the model so the new provider's default takes over.
               if (next && next.defaultModel !== model) onModelChange("");
               setReveal(false);
               setProbe(null);
             }}
-            disabled={disabled || !statuses}
+            disabled={disabled}
           >
-            {grouped.length === 0 && <option value={value}>Loading…</option>}
             {grouped.map((group) => (
               <optgroup key={group.type} label={group.type}>
                 {group.items.map((p) => (
@@ -229,13 +211,13 @@ export function ProviderPicker({
               onApiKeyChange(e.target.value);
               setProbe(null);
             }}
-            disabled={disabled || !statuses}
+            disabled={disabled}
           />
           <button
             type="button"
             className="btn-ghost shrink-0"
             onClick={() => setReveal((r) => !r)}
-            disabled={disabled || !statuses || apiKey.length === 0}
+            disabled={disabled || apiKey.length === 0}
             aria-pressed={reveal}
           >
             {reveal ? "hide" : "show"}
@@ -260,7 +242,7 @@ export function ProviderPicker({
             type="button"
             className="btn-ghost shrink-0"
             onClick={runProbe}
-            disabled={disabled || testing || !statuses || !willHaveKey}
+            disabled={disabled || testing || !willHaveKey}
             title={
               willHaveKey
                 ? "Send one tiny request to check the key and model"
@@ -331,7 +313,7 @@ export function ProviderPicker({
             onModelChange(e.target.value);
             setProbe(null);
           }}
-          disabled={disabled || !statuses}
+          disabled={disabled}
         />
         <datalist id={listId}>
           {suggestions.map((m) => (
