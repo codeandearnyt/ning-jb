@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       notes: result.notes,
       model: result.model,
       provider: result.provider,
+      contract: result.contract,
     });
   } catch (err) {
     const status = err instanceof ForgeError ? err.status : 500;

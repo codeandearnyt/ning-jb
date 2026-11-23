@@ -57,6 +57,12 @@ export interface ForgeSuccess {
   provider: string;
   /** True when the fixed wall line came back instead of a forged prompt. */
   wall?: boolean;
+  /** What the contract check found. Absent on the wall path. */
+  contract?: {
+    present: string[];
+    missing: string[];
+    repaired: boolean;
+  };
 }
 
 export interface ForgeFailure {

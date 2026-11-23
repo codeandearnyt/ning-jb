@@ -3,18 +3,35 @@
 @tailwind utilities;
 
 :root {
-  /* Paper-white surfaces, pink ink. Every text token below clears 4.5:1 on
-     white; hierarchy comes from size and weight, never from opacity. */
+  /* Paper-white base, pink ink. Every text token below clears 4.5:1 on white;
+     hierarchy comes from size and weight, never from opacity. The tint ramp is
+     surface-only — a tint never carries text. */
   --bg: 255 255 255;
   --panel: 255 255 255;
   --panel2: 253 246 249;
-  --line: 236 219 227;
+  --line: 240 220 232;
+
+  /* Pink ramp. 50/100/200 are surfaces, 300+ are strokes and fills. */
+  --pink-50: 255 246 250;
+  --pink-100: 255 233 243;
+  --pink-200: 255 211 230;
+  --pink-300: 255 176 211;
+  --pink-400: 249 115 179;
+  --pink-500: 236 72 153;
+  --pink-600: 219 39 119;
+  --pink-700: 190 24 93;
+  --pink-800: 157 23 77;
+
   --ink: 26 16 22;
   --muted: 107 88 99;
   --heat: 190 24 93;
   --hot: 219 39 119;
   --danger: 185 28 28;
   --good: 4 120 87;
+
+  /* The one curve. out-expo: fast out, long settle. */
+  --ease-forge: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
   color-scheme: light;
 }
@@ -25,55 +42,20 @@
   }
 
   body {
-    background-color: rgb(var(--bg));
-    background-image:
-      radial-gradient(
-        900px 420px at 6% -8%,
-        rgb(var(--heat) / 0.07),
-        transparent 70%
-      ),
-      radial-gradient(
-        1100px 500px at 96% -4%,
-        rgb(var(--hot) / 0.06),
-        transparent 72%
-      ),
-      radial-gradient(
-        1200px 620px at 50% 112%,
-        rgb(var(--heat) / 0.05),
-        transparent 70%
-      );
-    background-repeat: no-repeat;
+    /* Flat pink paper. Cards are white. No gradient, no grid, no masks —
+       a wash that fades leaves a seam, and a seam reads as a mistake. */
+    background-color: rgb(var(--panel2));
     color: rgb(var(--ink));
     min-height: 100dvh;
   }
 
-  /* Hairline grid. Fixed + pointer-events-none: no repaint cost while scrolling. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(to right, rgb(var(--line) / 0.9) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(var(--line) / 0.9) 1px, transparent 1px);
-    background-size: 72px 72px;
-    opacity: 0.55;
-    mask-image: radial-gradient(ellipse at 50% 0%, #000 8%, transparent 72%);
-    -webkit-mask-image: radial-gradient(
-      ellipse at 50% 0%,
-      #000 8%,
-      transparent 72%
-    );
-  }
-
   ::selection {
-    background: rgb(var(--heat) / 0.16);
-    color: rgb(var(--ink));
+    background: rgb(var(--pink-300) / 0.55);
+    color: rgb(var(--pink-800));
   }
 
   *:focus-visible {
-    outline: 2px solid rgb(var(--heat) / 0.65);
+    outline: 2px solid rgb(var(--heat) / 0.7);
     outline-offset: 2px;
   }
 
@@ -82,15 +64,15 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: rgb(var(--bg));
+    background: rgb(var(--pink-50));
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--line));
+    background: rgb(var(--pink-200));
     border: 2px solid rgb(var(--bg));
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--muted) / 0.45);
+    background: rgb(var(--pink-300));
   }
 }
 
@@ -104,22 +86,52 @@
     @apply font-mono text-[10.5px] uppercase tracking-[0.2em] text-heat;
   }
 
+  /* White card on pink paper: tinted stroke, pink hairline on top, no grey. */
   .card {
-    @apply rounded-lg border border-line bg-panel shadow-card;
+    @apply relative rounded-lg border border-line bg-panel shadow-card;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto -1px;
+    height: 1px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--pink-400) / 0.75) 22%,
+      rgb(var(--pink-500) / 0.9) 50%,
+      rgb(var(--pink-400) / 0.75) 78%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  /* Pink-tinted header strip. Surface only — text stays ink or heat. */
+  .card-head {
+    @apply flex items-center justify-between gap-2 rounded-t-lg border-b
+      border-line px-5 py-3;
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--pink-100)) 0%,
+      rgb(var(--pink-50)) 55%,
+      rgb(255 255 255) 100%
+    );
   }
 
   .field {
     @apply w-full rounded-sm border border-line bg-panel px-3 py-2.5 text-sm
-      text-ink placeholder:text-muted transition-colors hover:border-muted/50
+      text-ink placeholder:text-muted transition-colors hover:border-pink-300
       focus:border-heat focus:outline-none focus:ring-4 focus:ring-heat/10;
   }
 
   .field-select {
     @apply w-full cursor-pointer appearance-none rounded-sm border border-line
       bg-panel py-2.5 pl-3 pr-9 text-sm text-ink transition-colors
-      hover:border-muted/50 focus:border-heat focus:outline-none
+      hover:border-pink-300 focus:border-heat focus:outline-none
       focus:ring-4 focus:ring-heat/10;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%236b5863' stroke-width='1.4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%23be185d' stroke-width='1.4'/%3E%3C/svg%3E");
     background-position: right 0.75rem center;
     background-repeat: no-repeat;
   }
@@ -127,28 +139,112 @@
   .btn-heat {
     @apply relative inline-flex items-center justify-center gap-2 overflow-hidden
       rounded-sm px-5 py-3 font-mono text-[12px] uppercase tracking-[0.16em]
-      text-white transition-all duration-150
+      text-white transition-all duration-160
       active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50
       disabled:shadow-none disabled:active:translate-y-0;
     background-image: linear-gradient(
       100deg,
       rgb(var(--heat)) 0%,
+      rgb(var(--pink-500)) 46%,
       rgb(var(--hot)) 100%
     );
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.22),
-      0 10px 24px -12px rgb(var(--heat) / 0.7);
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      0 12px 28px -12px rgb(var(--heat) / 0.75);
+  }
+
+  /* Sheen. One sweep on hover, transform-only, never loops. */
+  .btn-heat::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgb(255 255 255 / 0.42) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+
+  .btn-heat:hover:not(:disabled)::after {
+    transform: translateX(120%);
+    transition: transform 620ms var(--ease-forge);
   }
 
   .btn-heat:hover:not(:disabled) {
-    filter: saturate(1.08) brightness(1.04);
+    filter: saturate(1.06) brightness(1.03);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      0 16px 34px -12px rgb(var(--heat) / 0.85);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-sm border
       border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] uppercase
-      tracking-[0.14em] text-muted transition-colors hover:border-heat/40
-      hover:bg-heat/5 hover:text-heat active:translate-y-px;
+      tracking-[0.14em] text-muted transition-colors duration-160
+      hover:border-pink-300 hover:bg-pink-50 hover:text-heat
+      active:translate-y-px;
+  }
+
+  /* Status chip. Filled = present, hollow = missing. Never both at once. */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-sm border px-2 py-1
+      font-mono text-[10px] uppercase tracking-[0.1em] transition-colors
+      duration-160;
+  }
+
+  .chip[data-ok="true"] {
+    @apply border-pink-300 bg-pink-100 text-heat;
+  }
+
+  .chip[data-ok="false"] {
+    @apply border-line bg-panel text-muted;
+  }
+
+  /* Section rule inside the forged document. */
+  .section-rule {
+    @apply border-t border-line;
+  }
+
+  /* ---- App shell -------------------------------------------------------- */
+
+  /* Pill tab. Selected state is a pink fill, not an underline. */
+  .tab {
+    @apply relative inline-flex items-center gap-1.5 rounded-full px-2.5
+      py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted
+      transition-colors duration-160 hover:text-heat sm:px-3.5;
+  }
+
+  .tab[data-active="true"] {
+    @apply text-heat;
+  }
+
+  /* Big choice card. Selected = tinted fill plus a pink ring. */
+  .choice {
+    @apply relative flex w-full items-start gap-3 rounded-md border border-line
+      bg-panel px-4 py-3 text-left transition-all duration-160
+      hover:border-pink-300 hover:bg-pink-50 focus:outline-none
+      focus-visible:ring-4 focus-visible:ring-heat/15;
+  }
+
+  .choice[data-active="true"] {
+    @apply border-pink-300 bg-pink-50 ring-1 ring-pink-300;
+  }
+
+  /* Wizard step rail. Filled segment = reached. */
+  .step-track {
+    @apply h-1 w-full overflow-hidden rounded-full bg-pink-100;
+  }
+
+  .step-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-heat to-hot;
+  }
+
+  .panel-head {
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-line
+      px-5 py-4;
   }
 }
 

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 import { getChecklist } from "@/lib/checklists";
-import { CLOSING_LINE, missingContract } from "@/lib/contract";
+import { CLOSING_LINE, missingContract, presentSections } from "@/lib/contract";
 import { FORGE_SYSTEM_PROMPT } from "@/lib/prompt-template";
 import {
   ProviderConfigError,
@@ -149,10 +149,21 @@ interface ParsedForge {
   notes: string[];
 }
 
+/** What the contract check found. Surfaced to the UI, never invented. */
+export interface ContractReport {
+  /** Sections present, in contract order. */
+  present: string[];
+  /** Pieces missing, including order, closing line, and length. */
+  missing: string[];
+  /** True when the bounded repair pass ran and produced a better prompt. */
+  repaired: boolean;
+}
+
 /** What forgePrompt returns: the artifact plus the provider that served it. */
 export interface ForgeResult extends ParsedForge {
   provider: string;
   model: string;
+  contract: ContractReport;
 }
 
 /** Sections that must survive the round-trip. [FRAME] is optional by design. */
@@ -311,9 +322,11 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
       ...readForge(await callOnce(baseMessages)),
       provider: resolved.provider.id,
       model,
+      contract: { present: [], missing: [], repaired: false },
     };
 
     const missing = missingContract(result.prompt);
+    let repaired = false;
     if (missing.length > 0) {
       const repairMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         ...baseMessages,
@@ -329,9 +342,15 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
         },
       ];
 
-      const repaired = readForge(await callOnce(repairMessages));
-      if (missingContract(repaired.prompt).length <= missing.length) {
-        result = { ...repaired, provider: resolved.provider.id, model };
+      const candidate = readForge(await callOnce(repairMessages));
+      if (missingContract(candidate.prompt).length <= missing.length) {
+        result = {
+          ...candidate,
+          provider: resolved.provider.id,
+          model,
+          contract: { present: [], missing: [], repaired: true },
+        };
+        repaired = true;
       } else {
         result.notes = [
           ...result.notes,
@@ -339,6 +358,13 @@ export async function forgePrompt(input: ForgeRequest): Promise<ForgeResult> {
         ].slice(0, MAX_NOTES);
       }
     }
+
+    // Computed from the prompt that actually ships, after any repair.
+    result.contract = {
+      present: presentSections(result.prompt),
+      missing: missingContract(result.prompt),
+      repaired,
+    };
 
     return result;
   } catch (err) {

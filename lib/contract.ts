@@ -22,6 +22,11 @@ export const CLOSING_LINE = "Ship the artifact now.";
 /** The contract's stated floor. Below this the forge re-asks once. */
 export const MIN_WORDS = 550;
 
+/** Sections the prompt actually carries, in contract order. For the UI. */
+export function presentSections(prompt: string): string[] {
+  return MANDATORY_SECTIONS.filter((s) => prompt.includes(s));
+}
+
 /** Returns the contract pieces the forged prompt is missing, in order. */
 export function missingContract(prompt: string): string[] {
   const missing: string[] = MANDATORY_SECTIONS.filter((s) => !prompt.includes(s));

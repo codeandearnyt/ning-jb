@@ -34,6 +34,8 @@ Thumbs.db
 .vercel
 .env*
 
-# Playwright captures land in the repo root by default.
-/live-*.png
-/pink-*.png
+# Playwright captures land in the repo root by default. All of them are
+# throwaway review artifacts — nothing in the root is a shipped asset.
+/*.png
+/*.jpeg
+
